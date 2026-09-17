@@ -204,6 +204,136 @@ export class UserManagementService {
   }
 
   /**
+   * Habilita un usuario validando su documento de identidad y correo institucional (HU01)
+   * Si la cuenta existe inactiva/pendiente, la activa y actualiza sus credenciales;
+   * si no existe, la crea y habilita directamente en el sistema con unicidad garantizada.
+   */
+  async enableUserByDocument(
+    dto: {
+      documentNumber: string;
+      documentType?: string;
+      email: string;
+      name?: string;
+      password?: string;
+      role?: Role;
+      studentCode?: string;
+      phone?: string;
+    },
+    actor: AuthenticatedUser
+  ): Promise<{ user: UserResponseDTO; isNew: boolean; message: string }> {
+    if (actor.role !== 'ADMIN') {
+      throw new ValidationError(
+        'Acceso denegado: Únicamente un administrador puede habilitar usuarios por documento de identidad',
+        'ADMIN_AUTH_REQUIRED',
+        403
+      );
+    }
+
+    const normalizedDoc = dto.documentNumber.trim();
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    // 1. Buscar si ya existe una cuenta con este número de documento
+    const existingUserByDoc = await this.userRepo.findByDocumentNumber(normalizedDoc);
+
+    if (existingUserByDoc) {
+      // Validar si el correo ingresado pertenece a otro usuario distinto
+      const existingUserByEmail = await this.userRepo.findByEmail(normalizedEmail);
+      if (existingUserByEmail && existingUserByEmail.id !== existingUserByDoc.id) {
+        throw new ValidationError(
+          `El correo '${normalizedEmail}' ya se encuentra registrado con otro documento de identidad`,
+          'EMAIL_ALREADY_EXISTS',
+          409,
+          'email'
+        );
+      }
+
+      // Preparar datos de actualización y habilitación
+      const updateData: Prisma.UserUpdateInput = {
+        status: 'ACTIVO',
+        isActive: true,
+        email: normalizedEmail,
+      };
+
+      if (dto.name?.trim()) updateData.name = dto.name.trim();
+      if (dto.documentType) updateData.documentType = dto.documentType;
+      if (dto.role) updateData.role = dto.role;
+      if (dto.studentCode) updateData.studentCode = dto.studentCode.trim();
+      if (dto.phone) updateData.phone = dto.phone.trim();
+      if (dto.password) {
+        updateData.passwordHash = await hashPassword(dto.password);
+      }
+
+      const updatedUser = await this.userRepo.updateUser(existingUserByDoc.id, updateData);
+
+      return {
+        user: this.mapToResponseDTO(updatedUser),
+        isNew: false,
+        message: `Cuenta asociada al documento ${normalizedDoc} habilitada exitosamente como ACTIVA.`,
+      };
+    }
+
+    // 2. Si no existe por documento, verificar que el correo no esté ocupado
+    const existingByEmail = await this.userRepo.findByEmail(normalizedEmail);
+    if (existingByEmail) {
+      throw new ValidationError(
+        `El correo '${normalizedEmail}' ya se encuentra registrado para el usuario '${existingByEmail.name}' con documento '${existingByEmail.documentNumber}'`,
+        'EMAIL_ALREADY_EXISTS',
+        409,
+        'email'
+      );
+    }
+
+    // 3. Crear y habilitar nuevo usuario
+    if (!dto.name || !dto.password || !dto.role) {
+      throw new ValidationError(
+        'Para registrar y habilitar un nuevo usuario se requiere nombre, contraseña y rol',
+        'MISSING_REQUIRED_FIELDS',
+        422
+      );
+    }
+
+    const passwordHash = await hashPassword(dto.password);
+    const newUser = await this.userRepo.create({
+      email: normalizedEmail,
+      passwordHash,
+      name: dto.name.trim(),
+      documentType: dto.documentType || 'CC',
+      documentNumber: normalizedDoc,
+      phone: dto.phone?.trim() || null,
+      role: dto.role,
+      status: 'ACTIVO',
+      isActive: true,
+      studentCode: dto.studentCode?.trim() || null,
+      program: 'Ingeniería de Sistemas',
+    });
+
+    return {
+      user: this.mapToResponseDTO(newUser),
+      isNew: true,
+      message: `Usuario ${newUser.name} registrado y habilitado exitosamente con documento ${normalizedDoc}.`,
+    };
+  }
+
+  /**
+   * Consulta el estado de identidad de un usuario por documento y correo para validación previa
+   */
+  async verifyIdentity(documentNumber: string, email?: string) {
+    const userByDoc = await this.userRepo.findByDocumentNumber(documentNumber.trim());
+    let userByEmail = null;
+
+    if (email) {
+      userByEmail = await this.userRepo.findByEmail(email.trim().toLowerCase());
+    }
+
+    return {
+      existsByDocument: !!userByDoc,
+      existsByEmail: !!userByEmail,
+      user: userByDoc ? this.mapToResponseDTO(userByDoc) : userByEmail ? this.mapToResponseDTO(userByEmail) : null,
+      canEnable: userByDoc ? userByDoc.status !== 'ACTIVO' || !userByDoc.isActive : true,
+    };
+  }
+
+  /**
    * Consulta el detalle de un usuario por su ID
    */
   async getUserById(id: string, actor: AuthenticatedUser): Promise<UserResponseDTO> {

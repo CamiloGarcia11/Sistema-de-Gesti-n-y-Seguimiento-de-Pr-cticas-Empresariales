@@ -181,14 +181,14 @@ export default function LoginPage() {
                   <div className="w-7 h-7 rounded-xl bg-red-600/60 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-4 h-4 text-white" />
                   </div>
-                  <span>Regla RN-06: Verificación de ARL previa a la formalización</span>
+                  <span>Afiliación y validación de ARL previa al inicio de actividades</span>
                 </div>
 
                 <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-medium">
                   <div className="w-7 h-7 rounded-xl bg-red-600/60 flex items-center justify-center shrink-0">
                     <FileCheck2 className="w-4 h-4 text-white" />
                   </div>
-                  <span>Reglas RN-07 y RN-08: Aprobación Dual concurrente Tutor & Docente</span>
+                  <span>Aprobación digital dual del plan de trabajo por Tutor y Docente</span>
                 </div>
               </div>
             </div>

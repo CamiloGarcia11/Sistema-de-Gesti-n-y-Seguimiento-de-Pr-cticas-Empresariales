@@ -100,6 +100,22 @@ export interface CreateUserDTO {
   status?: UserStatus;
 }
 
+export interface EnableUserByDocumentDTO {
+  documentNumber: string;
+  documentType?: string;
+  email: string;
+  name?: string;
+  password?: string;
+  role?: Role;
+  studentCode?: string;
+  phone?: string;
+}
+
+export interface VerifyUserIdentityDTO {
+  documentNumber: string;
+  email?: string;
+}
+
 export interface UserResponseDTO {
   id: string;
   email: string;

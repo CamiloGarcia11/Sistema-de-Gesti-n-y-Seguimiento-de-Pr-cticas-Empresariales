@@ -133,6 +133,28 @@ export class UserRepository {
   }
 
   /**
+   * Actualiza datos de un usuario existente
+   */
+  async updateUser(id: string, data: Prisma.UserUpdateInput) {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+      include: {
+        company: {
+          select: {
+            id: true,
+            businessName: true,
+            nit: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
    * Consulta paginada y filtrada de usuarios
    */
   async findMany(params: {
