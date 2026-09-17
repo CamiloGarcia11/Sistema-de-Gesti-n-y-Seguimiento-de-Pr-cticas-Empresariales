@@ -1,0 +1,414 @@
+// ==============================================================================
+// SIGETRAP - Sistema de Gestión, Trazabilidad y Seguimiento de Prácticas
+// Prisma Schema Definition - PostgreSQL / Supabase
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVO
+  INACTIVO
+  PENDIENTE
+}
+
+enum Role {
+  DIRECTOR_PROGRAMA
+  ESTUDIANTE
+  DOCENTE_PRACTICA
+  TUTOR_EMPRESARIAL
+  ADMIN
+}
+
+enum AgreementStatus {
+  EN_TRAMITE
+  VIGENTE
+  VENCIDO
+  CANCELADO
+}
+
+enum VacancyStatus {
+  BORRADOR
+  PUBLICADA
+  EN_SELECCION
+  CUBIERTA
+  CANCELADA
+}
+
+enum ApplicationStatus {
+  POSTULADO
+  PRESENTADO
+  ACEPTADO
+  RECHAZADO
+  CANCELADO
+}
+
+enum PracticeStatus {
+  ASPIRANTE
+  POSTULADO
+  PRESENTADO_A_EMPRESA
+  REUBICACION_PENDIENTE
+  ACEPTADO_ARL_PENDIENTE
+  ASIGNADO_FORMALMENTE
+  PLAN_EN_REVISION
+  PRACTICA_EN_EJECUCION
+  EVALUACION_PENDIENTE
+  FINALIZADA
+  CERRADA
+}
+
+enum WorkPlanStatus {
+  BORRADOR
+  EN_REVISION
+  APROBADO_TUTOR
+  APROBADO_DOCENTE
+  APROBADO_DUAL
+  RECHAZADO
+}
+
+enum ReportType {
+  INICIAL
+  PARCIAL
+  FINAL
+}
+
+enum ReportStatus {
+  PENDIENTE
+  ENTREGADO
+  APROBADO
+  DEVUELTO_CORRECCIONES
+}
+
+enum EvaluationType {
+  PARCIAL_TUTOR
+  FINAL_TUTOR
+  FINAL_DOCENTE
+}
+
+// ------------------------------------------------------------------------------
+// MODELS
+// ------------------------------------------------------------------------------
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String    @map("password_hash")
+  name           String
+  documentType   String    @default("CC") @map("document_type")
+  documentNumber String    @unique @map("document_number")
+  phone          String?
+  role           Role
+  status         UserStatus @default(ACTIVO)
+  isActive       Boolean    @default(true) @map("is_active")
+  tokenVersion   Int        @default(1) @map("token_version")
+  studentCode    String?    @unique @map("student_code")
+  program        String    @default("Ingeniería de Sistemas")
+  companyId      String?   @map("company_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  // Relaciones
+  company                 Company?               @relation("CompanyTutors", fields: [companyId], references: [id])
+  vacanciesCreated        Vacancy[]              @relation("VacancyCreator")
+  applications            Application[]          @relation("StudentApplications")
+  practicesAsStudent      Practice[]             @relation("PracticeStudent")
+  practicesAsTeacher      Practice[]             @relation("PracticeTeacher")
+  practicesAsTutor        Practice[]             @relation("PracticeTutor")
+  practicesAsDirector     Practice[]             @relation("PracticeDirector")
+  arlValidationsMade      Practice[]             @relation("ArlValidator")
+  statusHistoryChanges    PracticeStatusHistory[] @relation("StatusChanger")
+  tutorPlanApprovals      WorkPlan[]             @relation("WorkPlanTutorApprover")
+  teacherPlanApprovals    WorkPlan[]             @relation("WorkPlanTeacherApprover")
+  followUpVisits          FollowUpVisit[]        @relation("TeacherVisits")
+  reportsSubmitted        Report[]               @relation("StudentReports")
+  reportsReviewed         Report[]               @relation("ReportReviewer")
+  evaluationsGiven        Evaluation[]           @relation("EvaluatorUser")
+
+  @@index([email])
+  @@index([role])
+  @@index([documentNumber])
+  @@map("users")
+}
+
+model Company {
+  id                  String       @id @default(uuid())
+  nit                 String       @unique
+  businessName        String       @map("business_name")
+  legalRepresentative String       @map("legal_representative")
+  contactEmail        String       @map("contact_email")
+  contactPhone        String       @map("contact_phone")
+  address             String
+  city                String
+  isActive            Boolean      @default(true) @map("is_active")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  deletedAt           DateTime?    @map("deleted_at")
+
+  // Relaciones
+  agreements          Agreement[]
+  tutors              User[]       @relation("CompanyTutors")
+  vacancies           Vacancy[]
+  practices           Practice[]
+
+  @@index([nit])
+  @@index([businessName])
+  @@map("companies")
+}
+
+model Agreement {
+  id               String          @id @default(uuid())
+  companyId        String          @map("company_id")
+  agreementNumber  String          @unique @map("agreement_number")
+  status           AgreementStatus @default(EN_TRAMITE)
+  startDate        DateTime        @map("start_date")
+  endDate          DateTime        @map("end_date")
+  documentUrl      String?         @map("document_url")
+  signedByDirector Boolean         @default(false) @map("signed_by_director")
+  notes            String?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  deletedAt        DateTime?       @map("deleted_at")
+
+  // Relaciones
+  company          Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([agreementNumber])
+  @@map("agreements")
+}
+
+model Vacancy {
+  id             String        @id @default(uuid())
+  companyId      String        @map("company_id")
+  createdById    String        @map("created_by_id")
+  title          String
+  description    String
+  requirements   String
+  vacanciesCount Int           @default(1) @map("vacancies_count")
+  status         VacancyStatus @default(PUBLICADA)
+  startDate      DateTime?     @map("start_date")
+  endDate        DateTime?     @map("end_date")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+
+  // Relaciones
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy      User          @relation("VacancyCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  applications   Application[]
+  practices      Practice[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("vacancies")
+}
+
+model Application {
+  id                    String            @id @default(uuid())
+  vacancyId             String            @map("vacancy_id")
+  studentId             String            @map("student_id")
+  status                ApplicationStatus @default(POSTULADO)
+  cvUrl                 String?           @map("cv_url")
+  presentationLetterUrl String?           @map("presentation_letter_url")
+  rejectionReason       String?           @map("rejection_reason")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  deletedAt             DateTime?         @map("deleted_at")
+
+  // Relaciones
+  vacancy               Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  student               User              @relation("StudentApplications", fields: [studentId], references: [id], onDelete: Restrict)
+  practice              Practice?
+
+  @@index([vacancyId])
+  @@index([studentId])
+  @@index([status])
+  @@map("applications")
+}
+
+model Practice {
+  id                    String         @id @default(uuid())
+  applicationId         String?        @unique @map("application_id")
+  studentId             String         @map("student_id")
+  companyId             String         @map("company_id")
+  vacancyId             String?        @map("vacancy_id")
+  teacherId             String?        @map("teacher_id")
+  tutorId               String?        @map("tutor_id")
+  directorId            String?        @map("director_id")
+  currentStatus         PracticeStatus @default(ASPIRANTE) @map("current_status")
+  
+  // Soporte de ARL y Formalización (RN-06)
+  arlSupportUrl         String?        @map("arl_support_url")
+  arlValidatedAt        DateTime?      @map("arl_validated_at")
+  arlValidatedById      String?        @map("arl_validated_by_id")
+  
+  presentationLetterUrl String?        @map("presentation_letter_url")
+  startDate             DateTime?      @map("start_date")
+  endDate               DateTime?      @map("end_date")
+  totalHoursRequired    Int            @default(320) @map("total_hours_required")
+  totalHoursCompleted   Int            @default(0) @map("total_hours_completed")
+  finalScore            Float?         @map("final_score")
+  isActive              Boolean        @default(true) @map("is_active")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  deletedAt             DateTime?      @map("deleted_at")
+
+  // Relaciones
+  application           Application?           @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  student               User                   @relation("PracticeStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  vacancy               Vacancy?               @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+  teacher               User?                  @relation("PracticeTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  tutor                 User?                  @relation("PracticeTutor", fields: [tutorId], references: [id], onDelete: SetNull)
+  director              User?                  @relation("PracticeDirector", fields: [directorId], references: [id], onDelete: SetNull)
+  arlValidator          User?                  @relation("ArlValidator", fields: [arlValidatedById], references: [id], onDelete: SetNull)
+  
+  statusHistory         PracticeStatusHistory[]
+  workPlan              WorkPlan?
+  followUpVisits        FollowUpVisit[]
+  reports               Report[]
+  evaluations           Evaluation[]
+
+  @@index([studentId])
+  @@index([companyId])
+  @@index([teacherId])
+  @@index([tutorId])
+  @@index([currentStatus])
+  @@map("practices")
+}
+
+model PracticeStatusHistory {
+  id              String         @id @default(uuid())
+  practiceId      String         @map("practice_id")
+  fromStatus      PracticeStatus @map("from_status")
+  toStatus        PracticeStatus @map("to_status")
+  changedByUserId String         @map("changed_by_user_id")
+  notes           String?
+  metadata        Json?          // Snapshot de validaciones, ARL, aprobaciones concurrentes, etc.
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  // Relaciones
+  practice        Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  changedBy       User           @relation("StatusChanger", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([practiceId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+  @@map("practice_status_history")
+}
+
+model WorkPlan {
+  id                  String         @id @default(uuid())
+  practiceId          String         @unique @map("practice_id")
+  objectives          String
+  methodology         String
+  schedule            Json           // Cronograma de actividades estructurado
+  documentUrl         String?        @map("document_url")
+  status              WorkPlanStatus @default(BORRADOR)
+  
+  // Aprobación Dual Concurrente (RN-07 y RN-08)
+  tutorApproved       Boolean        @default(false) @map("tutor_approved")
+  tutorApprovedAt     DateTime?      @map("tutor_approved_at")
+  tutorApprovedById   String?        @map("tutor_approved_by_id")
+
+  teacherApproved     Boolean        @default(false) @map("teacher_approved")
+  teacherApprovedAt   DateTime?      @map("teacher_approved_at")
+  teacherApprovedById String?        @map("teacher_approved_by_id")
+
+  feedback            String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relaciones
+  practice            Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  tutorApprovedBy     User?          @relation("WorkPlanTutorApprover", fields: [tutorApprovedById], references: [id], onDelete: SetNull)
+  teacherApprovedBy   User?          @relation("WorkPlanTeacherApprover", fields: [teacherApprovedById], references: [id], onDelete: SetNull)
+
+  @@index([practiceId])
+  @@index([status])
+  @@map("work_plans")
+}
+
+model FollowUpVisit {
+  id                 String    @id @default(uuid())
+  practiceId         String    @map("practice_id")
+  teacherId          String    @map("teacher_id")
+  visitDate          DateTime  @map("visit_date")
+  visitType          String    @default("PRESENCIAL") @map("visit_type") // PRESENCIAL, VIRTUAL
+  observations       String
+  commitments        String?
+  supportDocumentUrl String?   @map("support_document_url")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  practice           Practice  @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  teacher            User      @relation("TeacherVisits", fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@index([practiceId])
+  @@index([teacherId])
+  @@map("follow_up_visits")
+}
+
+model Report {
+  id            String       @id @default(uuid())
+  practiceId    String       @map("practice_id")
+  studentId     String       @map("student_id")
+  type          ReportType
+  status        ReportStatus @default(PENDIENTE)
+  documentUrl   String?      @map("document_url")
+  periodStart   DateTime?    @map("period_start")
+  periodEnd     DateTime?    @map("period_end")
+  hoursReported Int          @default(0) @map("hours_reported")
+  reviewedById  String?      @map("reviewed_by_id")
+  feedback      String?
+  reviewedAt    DateTime?    @map("reviewed_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // Relaciones
+  practice      Practice     @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  student       User         @relation("StudentReports", fields: [studentId], references: [id], onDelete: Restrict)
+  reviewedBy    User?        @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([practiceId])
+  @@index([studentId])
+  @@index([type])
+  @@index([status])
+  @@map("reports")
+}
+
+model Evaluation {
+  id                 String         @id @default(uuid())
+  practiceId         String         @map("practice_id")
+  evaluatorId        String         @map("evaluator_id")
+  type               EvaluationType
+  criteriaScores     Json           // Ponderación de competencias / criterios evaluados
+  quantitativeScore  Float          @map("quantitative_score") // 0.0 - 5.0
+  qualitativeComments String?       @map("qualitative_comments")
+  documentUrl        String?        @map("document_url")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  // Relaciones
+  practice           Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  evaluator          User           @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Restrict)
+
+  @@index([practiceId])
+  @@index([evaluatorId])
+  @@index([type])
+  @@map("evaluations")
+}

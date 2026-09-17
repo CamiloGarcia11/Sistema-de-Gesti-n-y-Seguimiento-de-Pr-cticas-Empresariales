@@ -1,0 +1,183 @@
+// ==============================================================================
+// SIGETRAP - Definiciones de Tipos Globales y DTOs de Dominio
+// ==============================================================================
+
+export type UserStatus = 'ACTIVO' | 'INACTIVO' | 'PENDIENTE';
+
+export type Role =
+  | 'DIRECTOR_PROGRAMA'
+  | 'ESTUDIANTE'
+  | 'DOCENTE_PRACTICA'
+  | 'TUTOR_EMPRESARIAL'
+  | 'ADMIN';
+
+export type AgreementStatus =
+  | 'EN_TRAMITE'
+  | 'VIGENTE'
+  | 'VENCIDO'
+  | 'CANCELADO';
+
+export type VacancyStatus =
+  | 'BORRADOR'
+  | 'PUBLICADA'
+  | 'EN_SELECCION'
+  | 'CUBIERTA'
+  | 'CANCELADA';
+
+export type ApplicationStatus =
+  | 'POSTULADO'
+  | 'PRESENTADO'
+  | 'ACEPTADO'
+  | 'RECHAZADO'
+  | 'CANCELADO';
+
+export type PracticeStatus =
+  | 'ASPIRANTE'
+  | 'POSTULADO'
+  | 'PRESENTADO_A_EMPRESA'
+  | 'REUBICACION_PENDIENTE'
+  | 'ACEPTADO_ARL_PENDIENTE'
+  | 'ASIGNADO_FORMALMENTE'
+  | 'PLAN_EN_REVISION'
+  | 'PRACTICA_EN_EJECUCION'
+  | 'EVALUACION_PENDIENTE'
+  | 'FINALIZADA'
+  | 'CERRADA';
+
+export type WorkPlanStatus =
+  | 'BORRADOR'
+  | 'EN_REVISION'
+  | 'APROBADO_TUTOR'
+  | 'APROBADO_DOCENTE'
+  | 'APROBADO_DUAL'
+  | 'RECHAZADO';
+
+export type ReportType = 'INICIAL' | 'PARCIAL' | 'FINAL';
+export type ReportStatus = 'PENDIENTE' | 'ENTREGADO' | 'APROBADO' | 'DEVUELTO_CORRECCIONES';
+export type EvaluationType = 'PARCIAL_TUTOR' | 'FINAL_TUTOR' | 'FINAL_DOCENTE';
+
+// ------------------------------------------------------------------------------
+// Sesión y Token JWT
+// ------------------------------------------------------------------------------
+
+export interface UserJwtPayload {
+  userId: string;
+  email: string;
+  role: Role;
+  name: string;
+  status: UserStatus;
+  tokenVersion: number;
+  companyId?: string | null;
+  studentCode?: string | null;
+}
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  role: Role;
+  name: string;
+  status: UserStatus;
+  tokenVersion: number;
+  companyId?: string | null;
+  studentCode?: string | null;
+}
+
+// ------------------------------------------------------------------------------
+// DTOs de Gestión de Usuarios (HU01)
+// ------------------------------------------------------------------------------
+
+export interface CreateUserDTO {
+  email: string;
+  password: string;
+  name: string;
+  documentType?: string;
+  documentNumber: string;
+  phone?: string;
+  role: Role;
+  studentCode?: string;
+  program?: string;
+  companyId?: string;
+  status?: UserStatus;
+}
+
+export interface UserResponseDTO {
+  id: string;
+  email: string;
+  name: string;
+  documentType: string;
+  documentNumber: string;
+  phone: string | null;
+  role: Role;
+  status: UserStatus;
+  isActive: boolean;
+  studentCode: string | null;
+  program: string;
+  companyId: string | null;
+  company?: {
+    id: string;
+    businessName: string;
+    nit: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserFilterDTO {
+  role?: Role;
+  status?: UserStatus;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface DeactivateUserResponseDTO {
+  id: string;
+  email: string;
+  name: string;
+  status: UserStatus;
+  isActive: boolean;
+  message: string;
+  deactivatedAt: Date;
+}
+
+// ------------------------------------------------------------------------------
+// DTOs de Máquina de Estados y Transiciones
+// ------------------------------------------------------------------------------
+
+export interface TransitionPracticeRequestDTO {
+  toStatus: PracticeStatus;
+  notes?: string;
+  arlSupportUrl?: string; // Requerido para pasar a ASIGNADO_FORMALMENTE (RN-06)
+  presentationLetterUrl?: string; // Para PRESENTADO_A_EMPRESA (RN-02)
+  rejectionReason?: string; // Para REUBICACION_PENDIENTE
+  metadata?: Record<string, unknown>;
+}
+
+export interface WorkPlanApprovalDTO {
+  approved: boolean;
+  feedback?: string;
+}
+
+export interface TransitionResult {
+  success: boolean;
+  practiceId: string;
+  previousStatus: PracticeStatus;
+  currentStatus: PracticeStatus;
+  transitionTimestamp: Date;
+  message: string;
+}
+
+// ------------------------------------------------------------------------------
+// Estructuras de Respuesta API Estandarizadas
+// ------------------------------------------------------------------------------
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  timestamp: string;
+}
