@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, GraduationCap } from 'lucide-react';
+import { Shield, User, LogOut, GraduationCap, Building2 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -71,7 +71,27 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
             </div>
           </Link>
 
-          {/* Navigation Links & User Profile */}
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1">
+            <Link
+              href="/empresas"
+              className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Empresas</span>
+            </Link>
+            {currentUser?.role === 'ADMIN' && (
+              <Link
+                href="/admin/usuarios"
+                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Usuarios</span>
+              </Link>
+            )}
+          </nav>
+
+          {/* User Profile */}
           <div className="flex items-center gap-4">
             {currentUser ? (
               <div className="flex items-center gap-3">
