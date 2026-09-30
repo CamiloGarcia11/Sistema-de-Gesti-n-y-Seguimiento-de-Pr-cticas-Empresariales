@@ -2,7 +2,7 @@
 // SIGETRAP - Definiciones de Tipos Globales y DTOs de Dominio
 // ==============================================================================
 
-export type UserStatus = 'ACTIVO' | 'INACTIVO' | 'PENDIENTE';
+export type UserStatus = 'ACTIVO' | 'INACTIVO' | 'PENDIENTE' | 'BLOQUEADO';
 
 export type Role =
   | 'DIRECTOR_PROGRAMA'
@@ -189,6 +189,7 @@ export interface TransitionResult {
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
+  message?: string;
   data?: T;
   error?: {
     code: string;

@@ -887,6 +887,7 @@ export default function AdminUsersPage() {
                   <option value="">Todos los Estados</option>
                   <option value="ACTIVO">Habilitados</option>
                   <option value="INACTIVO">Desactivados</option>
+                  <option value="BLOQUEADO">Bloqueados</option>
                 </select>
               </div>
             </div>
@@ -1012,7 +1013,7 @@ export default function AdminUsersPage() {
                                 isActive ? 'bg-emerald-600 animate-pulse' : 'bg-red-600'
                               }`}
                             />
-                            {isActive ? 'HABILITADO' : 'INACTIVO'}
+                            {isActive ? 'HABILITADO' : u.status === 'BLOQUEADO' ? 'BLOQUEADO' : 'INACTIVO'}
                           </span>
 
                           {/* Action Button: Desactivar / Habilitar */}

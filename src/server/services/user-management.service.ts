@@ -13,6 +13,7 @@ import {
   AuthenticatedUser,
   UserResponseDTO,
   DeactivateUserResponseDTO,
+  Role,
 } from '@/types';
 import { hashPassword } from '@/lib/auth';
 import { Prisma } from '@prisma/client';

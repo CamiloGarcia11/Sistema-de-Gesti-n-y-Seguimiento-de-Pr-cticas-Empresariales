@@ -12,7 +12,16 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ------------------------------------------------------------------------------
 
 DO $$ BEGIN
-    CREATE TYPE "UserStatus" AS ENUM ('ACTIVO', 'INACTIVO', 'PENDIENTE');
+    CREATE TYPE "UserStatus" AS ENUM ('ACTIVO', 'INACTIVO', 'PENDIENTE', 'BLOQUEADO');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TYPE "UserStatus" ADD VALUE IF NOT EXISTS 'BLOQUEADO';
+
+-- Alias conceptual del enum para especificación académica (estado_usuario enum)
+DO $$ BEGIN
+    CREATE TYPE "estado_usuario" AS ENUM ('ACTIVO', 'INACTIVO', 'PENDIENTE', 'BLOQUEADO');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;

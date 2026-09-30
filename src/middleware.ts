@@ -26,8 +26,8 @@ export function middleware(request: NextRequest) {
       const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
       const payload = JSON.parse(payloadJson);
 
-      // Solo usuarios con rol ADMIN pueden acceder a /admin/*
-      if (payload.role !== 'ADMIN' || payload.status === 'INACTIVO') {
+      // Solo usuarios con rol ADMIN activos pueden acceder a /admin/*
+      if (payload.role !== 'ADMIN' || payload.status === 'INACTIVO' || payload.status === 'BLOQUEADO') {
         return NextResponse.redirect(new URL('/', request.url));
       }
     } catch {
