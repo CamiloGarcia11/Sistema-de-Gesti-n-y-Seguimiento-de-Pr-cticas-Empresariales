@@ -66,12 +66,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  
-  const isAuthorized = payload.role === 'ADMIN' && payload.status !== 'INACTIVO';
+  // Validar rol y estado del usuario (Aquí se integró tu validación de BLOQUEADO)
+  const isAuthorized = payload.role === 'ADMIN' && payload.status !== 'INACTIVO' && payload.status !== 'BLOQUEADO';
 
   if (!isAuthorized) {
     if (isApiAdminRoute) {
-      
       return NextResponse.json(
         {
           success: false,

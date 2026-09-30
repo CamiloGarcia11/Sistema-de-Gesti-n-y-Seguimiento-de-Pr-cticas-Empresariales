@@ -84,8 +84,8 @@ export function getAuthenticatedUser(req: NextRequest): AuthenticatedUser | null
     return null;
   }
 
-  // Rechazar sesiones de usuarios inactivos
-  if (payload.status === 'INACTIVO') {
+  // Rechazar sesiones de usuarios inactivos o bloqueados (CU01)
+  if (payload.status === 'INACTIVO' || payload.status === 'BLOQUEADO') {
     return null;
   }
 

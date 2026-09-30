@@ -21,6 +21,7 @@ enum UserStatus {
   ACTIVO
   INACTIVO
   PENDIENTE
+  BLOQUEADO
 }
 
 enum Role {

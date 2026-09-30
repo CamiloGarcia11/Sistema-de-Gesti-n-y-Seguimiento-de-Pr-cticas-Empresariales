@@ -1,13 +1,13 @@
 // ==============================================================================
 // SIGETRAP - Controlador de Inicio de Sesión (Login)
 // Capa de Controladores (Route Handler RNF11)
-// Endpoint: POST /api/v1/auth/login
+// Módulo: Seguridad / Autenticación y sesión (CU01)
+// Endpoint: POST /api/v1/auth/login y POST /api/v1/auth/login/
 // ==============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { userRepository } from '@/server/repositories/user.repository';
-import { comparePassword, generateToken } from '@/lib/auth';
+import { authService, AuthError } from '@/server/services/auth.service';
 import { ApiResponse, UserResponseDTO } from '@/types';
 
 const loginSchema = z.object({
@@ -17,7 +17,9 @@ const loginSchema = z.object({
 
 const COOKIE_NAME = process.env.COOKIE_NAME || 'sigetrap_session_token';
 
-export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{ user: UserResponseDTO; token: string }>>> {
+export async function POST(
+  req: NextRequest
+): Promise<NextResponse<ApiResponse<{ user: UserResponseDTO; token: string }>>> {
   try {
     const body = await req.json();
     const validationResult = loginSchema.safeParse(body);
@@ -37,89 +39,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{
       );
     }
 
-    const { email, password } = validationResult.data;
-    const user = await userRepository.findByEmail(email);
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'El correo electrónico o la contraseña son incorrectos',
-          },
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
-
-    // Validar contraseña
-    const isValidPassword = await comparePassword(password, user.passwordHash);
-    if (!isValidPassword) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'El correo electrónico o la contraseña son incorrectos',
-          },
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
-
-    // Validar estado de la cuenta (HU01 - Criterio 2)
-    if (user.status === 'INACTIVO' || !user.isActive) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'ACCOUNT_DEACTIVATED',
-            message: 'Tu cuenta se encuentra inactiva o deshabilitada. Contacta al administrador del sistema.',
-          },
-          timestamp: new Date().toISOString(),
-        },
-        { status: 403 }
-      );
-    }
-
-    // Generar JWT
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      status: user.status as any,
-      tokenVersion: user.tokenVersion,
-      companyId: user.companyId,
-      studentCode: user.studentCode,
-    });
-
-    const userDTO: UserResponseDTO = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      documentType: user.documentType,
-      documentNumber: user.documentNumber,
-      phone: user.phone,
-      role: user.role,
-      status: user.status as any,
-      isActive: user.isActive,
-      studentCode: user.studentCode,
-      program: user.program,
-      companyId: user.companyId,
-      company: user.company,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    // Ejecutar lógica de negocio a través de AuthService (CU01)
+    const { user, token } = await authService.login(validationResult.data);
 
     const response = NextResponse.json(
       {
         success: true,
         data: {
-          user: userDTO,
+          user,
           token,
         },
         timestamp: new Date().toISOString(),
@@ -139,7 +66,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{
     });
 
     return response;
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: error.statusCode }
+      );
+    }
+
     console.error('[API_LOGIN_ERROR]:', error);
     return NextResponse.json(
       {

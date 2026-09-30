@@ -12,10 +12,13 @@
     "prisma:seed": "npx tsx prisma/seed.ts",
     "prisma:studio": "npx prisma studio",
     "db:check": "npx tsx scripts/test-db-connection.ts",
-    "test": "npx tsx tests/hu01-user-management.test.ts",
+    "test": "npm run test:all",
     "test:hu01": "npx tsx tests/hu01-user-management.test.ts",
+    "test:cu01": "npx tsx tests/cu01-authentication.test.ts",
+    "test:auth": "npx tsx tests/cu01-authentication.test.ts",
     "test:hu07": "npx tsx tests/hu07-company-registration.test.ts",
-    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/hu07-company-registration.test.ts"
+    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/cu01-authentication.test.ts && npx tsx tests/hu07-company-registration.test.ts"
+
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -40,5 +43,12 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "allowScripts": {
+    "prisma@5.22.0": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.28.2": true,
+    "sharp@0.33.5": true
   }
 }
