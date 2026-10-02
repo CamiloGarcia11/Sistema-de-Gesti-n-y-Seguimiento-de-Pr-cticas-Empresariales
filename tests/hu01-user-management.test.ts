@@ -104,7 +104,7 @@ async function runTests() {
   // ----------------------------------------------------------------------------
   // PRUEBA 1: Registro Exitoso con datos válidos y no duplicados
   // ----------------------------------------------------------------------------
-  console.log('Test 1: Registro exitoso de nuevo usuario...');
+  console.log('Test 1: Registro exitoso de nuevo usuario con promedio y créditos...');
   const newUser = await service.registerUser(
     {
       email: 'nuevo.practicante@ufps.edu.co',
@@ -113,12 +113,19 @@ async function runTests() {
       password: 'SecurePassword123!',
       role: 'ESTUDIANTE',
       studentCode: '1152001',
+      academicAverage: 4.3,
+      approvedCredits: 125,
     },
     adminActor
   );
 
-  if (newUser.email === 'nuevo.practicante@ufps.edu.co' && newUser.status === 'ACTIVO') {
-    console.log('  ✅ PASÓ: Usuario registrado correctamente con estado ACTIVO.\n');
+  if (
+    newUser.email === 'nuevo.practicante@ufps.edu.co' &&
+    newUser.status === 'ACTIVO' &&
+    newUser.academicAverage === 4.3 &&
+    newUser.approvedCredits === 125
+  ) {
+    console.log('  ✅ PASÓ: Usuario registrado correctamente con estado ACTIVO, promedio 4.3 y 125 créditos.\n');
   } else {
     throw new Error('  ❌ FALLÓ: El usuario no se creó según lo esperado');
   }

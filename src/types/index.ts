@@ -95,6 +95,8 @@ export interface CreateUserDTO {
   phone?: string;
   role: Role;
   studentCode?: string;
+  academicAverage?: number;
+  approvedCredits?: number;
   program?: string;
   companyId?: string;
   status?: UserStatus;
@@ -108,6 +110,8 @@ export interface EnableUserByDocumentDTO {
   password?: string;
   role?: Role;
   studentCode?: string;
+  academicAverage?: number;
+  approvedCredits?: number;
   phone?: string;
 }
 
@@ -127,6 +131,8 @@ export interface UserResponseDTO {
   status: UserStatus;
   isActive: boolean;
   studentCode: string | null;
+  academicAverage?: number | null;
+  approvedCredits?: number | null;
   program: string;
   companyId: string | null;
   company?: {

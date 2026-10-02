@@ -151,6 +151,8 @@ CREATE TABLE IF NOT EXISTS "users" (
     "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
     "token_version" INT NOT NULL DEFAULT 1,
     "student_code" VARCHAR(50) UNIQUE,
+    "academic_average" DOUBLE PRECISION,
+    "approved_credits" INT,
     "program" VARCHAR(150) NOT NULL DEFAULT 'Ingeniería de Sistemas',
     "company_id" UUID REFERENCES "companies"("id") ON DELETE SET NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),

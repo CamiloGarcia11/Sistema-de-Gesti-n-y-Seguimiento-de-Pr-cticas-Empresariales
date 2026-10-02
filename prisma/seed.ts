@@ -110,6 +110,8 @@ async function main() {
       passwordHash,
       documentNumber: '1090123456',
       studentCode: '1152001',
+      academicAverage: 4.25,
+      approvedCredits: 130,
       role: Role.ESTUDIANTE,
       program: 'Ingeniería de Sistemas',
       status: UserStatus.ACTIVO,

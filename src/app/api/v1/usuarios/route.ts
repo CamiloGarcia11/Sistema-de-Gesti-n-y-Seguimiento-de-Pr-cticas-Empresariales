@@ -41,6 +41,24 @@ const createUserSchema = z.object({
     required_error: 'El rol del usuario es obligatorio',
   }),
   studentCode: z.string().optional(),
+  academicAverage: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+      z
+        .number({ invalid_type_error: 'El promedio académico debe ser un número' })
+        .min(0, 'El promedio debe ser mínimo 0.0')
+        .max(5, 'El promedio no puede ser superior a 5.0')
+        .optional()
+    ),
+  approvedCredits: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+      z
+        .number({ invalid_type_error: 'Los créditos aprobados deben ser un número' })
+        .int('Los créditos deben ser un número entero')
+        .min(0, 'Los créditos no pueden ser negativos')
+        .optional()
+    ),
   program: z.string().default('Ingeniería de Sistemas'),
   companyId: z.string().uuid().optional(),
   status: z.enum(['ACTIVO', 'INACTIVO', 'PENDIENTE'] as [UserStatus, ...UserStatus[]]).default('ACTIVO'),

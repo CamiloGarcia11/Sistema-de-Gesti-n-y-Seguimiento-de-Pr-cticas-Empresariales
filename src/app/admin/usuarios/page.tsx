@@ -76,6 +76,8 @@ export default function AdminUsersPage() {
     phone: '',
     role: 'ESTUDIANTE' as Role,
     studentCode: '',
+    academicAverage: '',
+    approvedCredits: '',
     program: 'Ingeniería de Sistemas',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -255,10 +257,21 @@ export default function AdminUsersPage() {
     setFormSuccess(null);
 
     try {
+      const payload: any = {
+        ...formData,
+        academicAverage: formData.academicAverage ? parseFloat(formData.academicAverage) : undefined,
+        approvedCredits: formData.approvedCredits ? parseInt(formData.approvedCredits, 10) : undefined,
+      };
+      if (formData.role !== 'ESTUDIANTE') {
+        delete payload.studentCode;
+        delete payload.academicAverage;
+        delete payload.approvedCredits;
+      }
+
       const res = await fetch('/api/v1/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -282,6 +295,8 @@ export default function AdminUsersPage() {
         phone: '',
         role: 'ESTUDIANTE',
         studentCode: '',
+        academicAverage: '',
+        approvedCredits: '',
         program: 'Ingeniería de Sistemas',
       });
       loadUsers();
@@ -829,6 +844,61 @@ export default function AdminUsersPage() {
                       </select>
                     </div>
 
+                    {formData.role === 'ESTUDIANTE' && (
+                      <div className="p-4 bg-red-50/50 border border-red-100 rounded-2xl space-y-3 animate-fadeIn">
+                        <div className="flex items-center gap-2 text-xs font-bold text-red-900">
+                          <GraduationCap className="w-4 h-4 text-red-700" />
+                          <span>Datos Académicos del Estudiante</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Código Estudiantil
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.studentCode}
+                            onChange={(e) => setFormData({ ...formData, studentCode: e.target.value })}
+                            placeholder="Ej. 1152001"
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Promedio Académico
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="5"
+                              value={formData.academicAverage}
+                              onChange={(e) => setFormData({ ...formData, academicAverage: e.target.value })}
+                              placeholder="Ej. 4.25 (0.0 a 5.0)"
+                              className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Créditos Aprobados
+                            </label>
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={formData.approvedCredits}
+                              onChange={(e) => setFormData({ ...formData, approvedCredits: e.target.value })}
+                              placeholder="Ej. 130 créditos"
+                              className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
                       disabled={isSubmitting}
@@ -988,6 +1058,27 @@ export default function AdminUsersPage() {
                                 )}
                               </button>
                             </div>
+
+                            {/* Detalle académico para rol ESTUDIANTE */}
+                            {u.role === 'ESTUDIANTE' && (u.studentCode || u.academicAverage !== null || u.approvedCredits !== null) && (
+                              <div className="flex items-center gap-2 flex-wrap text-[11px] mt-2">
+                                {u.studentCode && (
+                                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono font-bold border border-slate-200">
+                                    Cód: {u.studentCode}
+                                  </span>
+                                )}
+                                {u.academicAverage !== null && u.academicAverage !== undefined && (
+                                  <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md font-bold">
+                                    Promedio: {Number(u.academicAverage).toFixed(2)}
+                                  </span>
+                                )}
+                                {u.approvedCredits !== null && u.approvedCredits !== undefined && (
+                                  <span className="bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-md font-bold">
+                                    Créditos: {u.approvedCredits}
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             {feedback && (
                               <div

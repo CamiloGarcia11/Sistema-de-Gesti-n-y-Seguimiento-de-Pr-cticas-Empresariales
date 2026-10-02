@@ -93,6 +93,8 @@ export class UserManagementService {
         status: dto.status || 'ACTIVO',
         isActive: dto.status === 'INACTIVO' ? false : true,
         studentCode: dto.studentCode?.trim() || null,
+        academicAverage: dto.academicAverage !== undefined ? dto.academicAverage : null,
+        approvedCredits: dto.approvedCredits !== undefined ? dto.approvedCredits : null,
         program: dto.program || 'Ingeniería de Sistemas',
         company: dto.companyId ? { connect: { id: dto.companyId } } : undefined,
       });
@@ -218,6 +220,8 @@ export class UserManagementService {
       password?: string;
       role?: Role;
       studentCode?: string;
+      academicAverage?: number;
+      approvedCredits?: number;
       phone?: string;
     },
     actor: AuthenticatedUser
@@ -259,6 +263,8 @@ export class UserManagementService {
       if (dto.documentType) updateData.documentType = dto.documentType;
       if (dto.role) updateData.role = dto.role;
       if (dto.studentCode) updateData.studentCode = dto.studentCode.trim();
+      if (dto.academicAverage !== undefined) updateData.academicAverage = dto.academicAverage;
+      if (dto.approvedCredits !== undefined) updateData.approvedCredits = dto.approvedCredits;
       if (dto.phone) updateData.phone = dto.phone.trim();
       if (dto.password) {
         updateData.passwordHash = await hashPassword(dto.password);
@@ -305,6 +311,8 @@ export class UserManagementService {
       status: 'ACTIVO',
       isActive: true,
       studentCode: dto.studentCode?.trim() || null,
+      academicAverage: dto.academicAverage !== undefined ? dto.academicAverage : null,
+      approvedCredits: dto.approvedCredits !== undefined ? dto.approvedCredits : null,
       program: 'Ingeniería de Sistemas',
     });
 
@@ -402,6 +410,8 @@ export class UserManagementService {
       status: user.status || (user.isActive ? 'ACTIVO' : 'INACTIVO'),
       isActive: user.isActive,
       studentCode: user.studentCode,
+      academicAverage: user.academicAverage !== undefined ? user.academicAverage : null,
+      approvedCredits: user.approvedCredits !== undefined ? user.approvedCredits : null,
       program: user.program,
       companyId: user.companyId,
       company: user.company

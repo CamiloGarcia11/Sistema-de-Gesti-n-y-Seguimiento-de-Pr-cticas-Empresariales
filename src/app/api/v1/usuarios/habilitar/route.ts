@@ -31,6 +31,16 @@ const enableUserSchema = z.object({
     'ADMIN',
   ] as [Role, ...Role[]]).optional(),
   studentCode: z.string().optional(),
+  academicAverage: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+      z.number().min(0).max(5).optional()
+    ),
+  approvedCredits: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+      z.number().int().min(0).optional()
+    ),
   phone: z.string().optional(),
 });
 
