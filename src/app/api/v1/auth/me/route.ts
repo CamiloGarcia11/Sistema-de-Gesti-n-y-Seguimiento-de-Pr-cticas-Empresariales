@@ -54,6 +54,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<ApiResponse>> 
         isActive: user.isActive,
         studentCode: user.studentCode,
         program: user.program,
+        companyId: user.companyId,
         company: user.company,
       },
       timestamp: new Date().toISOString(),

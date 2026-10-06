@@ -268,6 +268,8 @@ export interface VacancyResponseDTO {
   title: string;
   description: string;
   requirements: string;
+  program: string;
+  academicPeriod: string | null;
   vacanciesCount: number;
   status: VacancyStatus;
   startDate?: Date | null;
@@ -290,18 +292,36 @@ export interface VacancyFilterDTO {
   search?: string;
   city?: string;
   status?: VacancyStatus;
+  program?: string;
+  academicPeriod?: string;
+  companyId?: string;
   page?: number;
   limit?: number;
 }
 
 export interface CreateVacancyDTO {
-  companyId: string;
+  companyId?: string;
   title: string;
   description: string;
   requirements: string;
+  program?: string;
+  academicPeriod?: string;
+  vacanciesCount: number;
+  status?: VacancyStatus;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
+}
+
+export interface UpdateVacancyDTO {
+  title?: string;
+  description?: string;
+  requirements?: string;
+  program?: string;
+  academicPeriod?: string;
   vacanciesCount?: number;
-  startDate?: Date;
-  endDate?: Date;
+  status?: VacancyStatus;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
 }
 
 export interface ApplyVacancyDTO {
