@@ -29,6 +29,7 @@ import { ApplicationRepository } from '../src/server/repositories/application.re
 import { UserRepository } from '../src/server/repositories/user.repository';
 import { AgreementRepository } from '../src/server/repositories/agreement.repository';
 import { PracticeRepository } from '../src/server/repositories/practice.repository';
+import { StudyPlanRepository } from '../src/server/repositories/study-plan.repository';
 import { AuthenticatedUser, Role, UserStatus, PracticeStatus, VacancyStatus } from '../src/types';
 import { POST as postularRouteHandler } from '../src/app/api/v1/vacantes/[id]/postular/route';
 import { generateToken } from '../src/lib/auth';
@@ -113,17 +114,20 @@ class MockApplicationRepository extends ApplicationRepository {
     studentId: string;
     companyId: string;
     cvUrl: string;
+    presentationLetterUrl?: string | null;
     notes?: string;
-  }) {
+  }): Promise<any> {
     const application = {
       id: `app_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       vacancyId: params.vacancyId,
       studentId: params.studentId,
       status: 'POSTULADO' as const,
       cvUrl: params.cvUrl,
+      presentationLetterUrl: params.presentationLetterUrl ?? null,
+      rejectionReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deletedAt: null,
+      deletedAt: null as Date | null,
     };
     this.applications.push(application);
 
@@ -137,7 +141,7 @@ class MockApplicationRepository extends ApplicationRepository {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deletedAt: null,
+      deletedAt: null as Date | null,
     };
     this.practices.push(practice);
 
@@ -190,6 +194,13 @@ class MockAgreementRepository extends AgreementRepository {
           !a.deletedAt
       ) || null
     );
+  }
+}
+
+class MockStudyPlanRepository extends StudyPlanRepository {
+  // Sin plan configurado: el servicio usa los valores por defecto (100 créditos, 3.0)
+  async findActiveByProgram(): Promise<any> {
+    return null;
   }
 }
 
@@ -373,7 +384,8 @@ async function runTests() {
     mockAppRepo,
     mockUserRepo,
     mockAgreementRepo,
-    mockPracticeRepo
+    mockPracticeRepo,
+    new MockStudyPlanRepository()
   );
 
   // ----------------------------------------------------------------------------

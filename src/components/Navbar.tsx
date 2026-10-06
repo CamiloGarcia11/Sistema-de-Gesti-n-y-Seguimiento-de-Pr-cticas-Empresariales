@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, Building2, Briefcase } from 'lucide-react';
+import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -87,6 +87,15 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
               <Building2 className="w-3.5 h-3.5" />
               <span>Empresas</span>
             </Link>
+            {currentUser?.role === 'ESTUDIANTE' && (
+              <Link
+                href="/estudiante/dictamen"
+                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Mi dictamen</span>
+              </Link>
+            )}
             {currentUser?.role === 'ADMIN' && (
               <Link
                 href="/admin/usuarios"

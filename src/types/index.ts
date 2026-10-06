@@ -266,6 +266,11 @@ export interface StudentEligibilityDTO {
   hasActivePractice: boolean;
   activePracticeStatus?: PracticeStatus | null;
   reasons: string[];
+  program: string;
+  planName: string | null;
+  planSource: 'PLAN_DE_ESTUDIOS' | 'VALORES_POR_DEFECTO';
+  missingCredits: number;
+  checkedAt: string;
 }
 
 export interface VacancyResponseDTO {

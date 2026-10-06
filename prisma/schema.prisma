@@ -417,3 +417,16 @@ model Evaluation {
   @@index([type])
   @@map("evaluations")
 }
+
+model StudyPlan {
+  id                    String   @id @default(uuid())
+  program               String   @unique
+  name                  String
+  minCreditsForPractice Int      @map("min_credits_for_practice")
+  minAverageForPractice Float    @map("min_average_for_practice")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("study_plans")
+}

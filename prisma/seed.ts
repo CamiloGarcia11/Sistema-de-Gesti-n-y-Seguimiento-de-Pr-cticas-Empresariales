@@ -22,8 +22,17 @@ async function main() {
   await prisma.agreement.deleteMany();
   await prisma.user.deleteMany();
   await prisma.company.deleteMany();
+  await prisma.StudyPlan.deleteMany();
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
+    await prisma.StudyPlan.create({
+    data: {
+      program: 'Ingeniería de Sistemas',
+      name: 'Plan de Estudios Ingeniería de Sistemas',
+      minCreditsForPractice: 100,
+      minAverageForPractice: 3.0,
+    },
+  });
 
   // 2. Crear Empresa con Convenio VIGENTE (RN-01)
   const company = await prisma.company.create({
