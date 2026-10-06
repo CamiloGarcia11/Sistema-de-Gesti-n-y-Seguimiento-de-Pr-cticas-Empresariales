@@ -184,6 +184,105 @@ export interface TransitionResult {
 }
 
 // ------------------------------------------------------------------------------
+// DTOs de Postulación de Estudiantes a Vacantes y Elegibilidad
+// ------------------------------------------------------------------------------
+
+export interface StudentEligibilityDTO {
+  isEligible: boolean;
+  studentId: string;
+  studentName: string;
+  studentCode: string | null;
+  approvedCredits: number | null;
+  academicAverage: number | null;
+  requiredCredits: number;
+  minimumAverage: number;
+  hasActivePractice: boolean;
+  activePracticeStatus?: PracticeStatus | null;
+  reasons: string[];
+}
+
+export interface VacancyResponseDTO {
+  id: string;
+  companyId: string;
+  title: string;
+  description: string;
+  requirements: string;
+  vacanciesCount: number;
+  status: VacancyStatus;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  company: {
+    id: string;
+    businessName: string;
+    nit: string;
+    city: string;
+    hasActiveAgreement: boolean;
+    agreementNumber?: string | null;
+  };
+  applicationsCount: number;
+  availableSlots: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface VacancyFilterDTO {
+  search?: string;
+  city?: string;
+  status?: VacancyStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateVacancyDTO {
+  companyId: string;
+  title: string;
+  description: string;
+  requirements: string;
+  vacanciesCount?: number;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface ApplyVacancyDTO {
+  vacancyId: string;
+  cvUrl: string; // Hoja de vida (PDF / Enlace)
+  notes?: string;
+}
+
+export interface ApplicationResponseDTO {
+  id: string;
+  vacancyId: string;
+  studentId: string;
+  status: ApplicationStatus;
+  cvUrl: string | null;
+  presentationLetterUrl?: string | null;
+  rejectionReason?: string | null;
+  practiceId?: string | null;
+  practiceStatus?: PracticeStatus | null;
+  vacancy?: {
+    id: string;
+    title: string;
+    description?: string;
+    requirements?: string;
+    company: {
+      id: string;
+      businessName: string;
+      city: string;
+    };
+  };
+  student?: {
+    id: string;
+    name: string;
+    email: string;
+    studentCode: string | null;
+    academicAverage?: number | null;
+    approvedCredits?: number | null;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ------------------------------------------------------------------------------
 // Estructuras de Respuesta API Estandarizadas
 // ------------------------------------------------------------------------------
 
@@ -198,3 +297,4 @@ export interface ApiResponse<T = unknown> {
   };
   timestamp: string;
 }
+

@@ -68,7 +68,21 @@ export default function HomePage() {
             {/* Call to Actions based on session */}
             <div className="mt-8 flex flex-wrap gap-4 items-center">
               {currentUser ? (
-                <div className="flex flex-wrap gap-3 items-center">
+                  <Link
+                    href="/vacantes"
+                    className="flex items-center gap-2 px-5 py-3.5 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all cursor-pointer"
+                  >
+                    <Briefcase className="w-4 h-4" />
+                    <span>Convocatorias y Vacantes</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href="/empresas"
+                    className="flex items-center gap-2 px-5 py-3.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Empresas</span>
+                  </Link>
                   {isAdmin && (
                     <Link
                       href="/admin/usuarios"
@@ -81,18 +95,25 @@ export default function HomePage() {
                   )}
                   <div className="px-4 py-3 bg-slate-100 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Sesión activa como: <strong className="text-slate-900">{currentUser.name}</strong> ({currentUser.role.replace('_', ' ')})</span>
+                    <span>Sesión activa: <strong className="text-slate-900">{currentUser.name}</strong> ({currentUser.role.replace('_', ' ')})</span>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3 items-center">
                   <Link
-                    href="/login"
+                    href="/vacantes"
                     className="flex items-center gap-2 px-6 py-3.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all cursor-pointer"
                   >
-                    <Lock className="w-4 h-4" />
-                    <span>Ingresar al Portal Institucional</span>
+                    <Briefcase className="w-4 h-4" />
+                    <span>Ver Vacantes Ofertadas</span>
                     <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Iniciar Sesión</span>
                   </Link>
                 </div>
               )}
@@ -132,15 +153,22 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Card 2 */}
+          {/* Card 2: Vacantes y Postulaciones de Práctica */}
           <div className="bg-white p-7 rounded-3xl border border-slate-200/80 shadow-md hover:border-red-300 transition-all group">
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
-              <FileCheck2 className="w-6 h-6" />
+              <Briefcase className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Seguimiento y Aprobación Dual</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-2">Convocatorias & Vacantes de Práctica</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Coordinación concurrente entre el Tutor Empresarial y el Docente Supervisor para la revisión, ajustes y aprobación de planes de trabajo.
+              Postulación a vacantes empresariales ofertadas con convenio vigente, adjuntando hoja de vida y verificando elegibilidad académica en tiempo real.
             </p>
+            <Link
+              href="/vacantes"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+            >
+              <span>Ver Vacantes Disponibles</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           {/* Card 3 */}
