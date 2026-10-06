@@ -116,18 +116,18 @@ class MockApplicationRepository extends ApplicationRepository {
     cvUrl: string;
     presentationLetterUrl?: string | null;
     notes?: string;
-  }) {
+  }): Promise<any> {
     const application = {
       id: `app_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       vacancyId: params.vacancyId,
       studentId: params.studentId,
       status: 'POSTULADO' as const,
       cvUrl: params.cvUrl,
-      presentationLetterUrl: params.presentationLetterUrl ?? null, // <-- Solución
-      rejectionReason: null,                                       // <-- Solución
+      presentationLetterUrl: params.presentationLetterUrl ?? null,
+      rejectionReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deletedAt: null,
+      deletedAt: null as Date | null,
     };
     this.applications.push(application);
 
@@ -141,7 +141,7 @@ class MockApplicationRepository extends ApplicationRepository {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      deletedAt: null,
+      deletedAt: null as Date | null,
     };
     this.practices.push(practice);
 
