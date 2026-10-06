@@ -27,6 +27,10 @@ import {
   practiceRepository,
 } from '@/server/repositories/practice.repository';
 import {
+  StudyPlanRepository,
+  studyPlanRepository,
+} from '@/server/repositories/study-plan.repository';
+import {
   AuthenticatedUser,
   ApplyVacancyDTO,
   StudentEligibilityDTO,
@@ -46,6 +50,7 @@ export class ApplicationValidationError extends Error {
     code: string = 'APPLICATION_VALIDATION_ERROR',
     statusCode: number = 422,
     field?: string
+    
   ) {
     super(message);
     this.name = 'ApplicationValidationError';
@@ -58,6 +63,7 @@ export class ApplicationValidationError extends Error {
 // Constantes académicas de elegibilidad para el programa de Ingeniería de Sistemas
 export const REQUIRED_CREDITS_THRESHOLD = 100;
 export const MINIMUM_ACADEMIC_AVERAGE = 3.0;
+export const DEFAULT_PROGRAM = 'Ingeniería de Sistemas';
 
 // Estados de práctica que indican que el estudiante ya tiene un proceso formal en curso
 const ACTIVE_PRACTICE_BLOCKING_STATUSES: PracticeStatus[] = [
@@ -73,7 +79,8 @@ export class StudentApplicationService {
     private applicationRepo: ApplicationRepository = applicationRepository,
     private userRepo: UserRepository = userRepository,
     private agreementRepo: AgreementRepository = agreementRepository,
-    private practiceRepo: PracticeRepository = practiceRepository
+    private practiceRepo: PracticeRepository = practiceRepository,
+    private studyPlanRepo: StudyPlanRepository = studyPlanRepository
   ) {}
 
   /**
@@ -107,20 +114,30 @@ export class StudentApplicationService {
       reasons.push('El estudiante no tiene registrado un código estudiantil institucional');
     }
 
-    // 4. Validar créditos académicos aprobados (Mínimo 100 créditos)
+        // 4. Umbrales del plan de estudios del programa (RN-09, RN-10)
     const studentWithAcademics = student as any;
+    const program: string = studentWithAcademics.program ?? DEFAULT_PROGRAM;
+    const studyPlan = await this.studyPlanRepo.findActiveByProgram(program);
+    const requiredCredits = studyPlan?.minCreditsForPractice ?? REQUIRED_CREDITS_THRESHOLD;
+    const minimumAverage = studyPlan?.minAverageForPractice ?? MINIMUM_ACADEMIC_AVERAGE;
+
+    // 5. RN-09: créditos aprobados frente al mínimo del plan
     const approvedCredits = studentWithAcademics.approvedCredits ?? 0;
-    if (approvedCredits < REQUIRED_CREDITS_THRESHOLD) {
+    if (approvedCredits < requiredCredits) {
       reasons.push(
-        `Créditos insuficientes: cuenta con ${approvedCredits} créditos aprobados y se requieren mínimo ${REQUIRED_CREDITS_THRESHOLD}`
+        `Créditos insuficientes: cuenta con ${approvedCredits} créditos aprobados y se requieren mínimo ${requiredCredits}`
       );
     }
 
-    // 5. Validar promedio ponderado acumulado (Mínimo 3.0)
+    // 5.1 RN-10: promedio frente al mínimo del plan (sin promedio NO habilita)
     const academicAverage = studentWithAcademics.academicAverage ?? null;
-    if (academicAverage !== null && academicAverage < MINIMUM_ACADEMIC_AVERAGE) {
+    if (academicAverage === null) {
       reasons.push(
-        `Promedio insuficiente: cuenta con promedio ${academicAverage.toFixed(2)} y el mínimo exigido es ${MINIMUM_ACADEMIC_AVERAGE.toFixed(1)}`
+        `Promedio no registrado: no es posible verificar el promedio mínimo exigido de ${minimumAverage.toFixed(1)}`
+      );
+    } else if (academicAverage < minimumAverage) {
+      reasons.push(
+        `Promedio insuficiente: cuenta con promedio ${academicAverage.toFixed(2)} y el mínimo exigido es ${minimumAverage.toFixed(1)}`
       );
     }
 
@@ -148,11 +165,16 @@ export class StudentApplicationService {
       studentCode: student.studentCode,
       approvedCredits: studentWithAcademics.approvedCredits ?? null,
       academicAverage: studentWithAcademics.academicAverage ?? null,
-      requiredCredits: REQUIRED_CREDITS_THRESHOLD,
-      minimumAverage: MINIMUM_ACADEMIC_AVERAGE,
+      requiredCredits,
+      minimumAverage,
       hasActivePractice,
       activePracticeStatus,
       reasons,
+      program,
+      planName: studyPlan?.name ?? null,
+      planSource: studyPlan ? 'PLAN_DE_ESTUDIOS' : 'VALORES_POR_DEFECTO',
+      missingCredits: Math.max(0, requiredCredits - approvedCredits),
+      checkedAt: new Date().toISOString(),
     };
   }
 

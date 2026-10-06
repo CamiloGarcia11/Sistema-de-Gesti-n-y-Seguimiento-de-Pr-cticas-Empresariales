@@ -576,14 +576,14 @@ export default function VacantesPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
                   <span className="text-slate-500 font-medium">Créditos Aprobados: </span>
-                  <strong className={eligibility && (eligibility.approvedCredits ?? 0) >= 100 ? 'text-emerald-700' : 'text-amber-700'}>
-                    {eligibility?.approvedCredits ?? 0} / 100 mín.
+                  <strong className={eligibility && (eligibility.approvedCredits ?? 0) >= eligibility.requiredCredits ? 'text-emerald-700' : 'text-amber-700'}>
+                    {eligibility?.approvedCredits ?? 0} / {eligibility?.requiredCredits ?? 100} mín.
                   </strong>
                 </div>
                 <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
                   <span className="text-slate-500 font-medium">Promedio: </span>
-                  <strong className={eligibility && (eligibility.academicAverage ?? 0) >= 3.0 ? 'text-emerald-700' : 'text-slate-700'}>
-                    {eligibility?.academicAverage ? eligibility.academicAverage.toFixed(2) : 'N/A'} / 3.0 mín.
+                  <strong className={eligibility && (eligibility.academicAverage ?? 0) >= (eligibility.minimumAverage ?? 0) ? 'text-emerald-700' : 'text-slate-700'}>
+                    {eligibility?.academicAverage !== undefined && eligibility?.academicAverage !== null ? eligibility.academicAverage.toFixed(2) : 'N/A'} / {(eligibility?.minimumAverage ?? 3.0).toFixed(1)} mín.
                   </strong>
                 </div>
               </div>
