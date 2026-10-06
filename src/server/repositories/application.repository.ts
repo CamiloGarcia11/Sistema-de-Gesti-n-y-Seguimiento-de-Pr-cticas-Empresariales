@@ -41,8 +41,6 @@ export class ApplicationRepository {
             name: true,
             email: true,
             studentCode: true,
-            academicAverage: true,
-            approvedCredits: true,
             program: true,
           },
         },

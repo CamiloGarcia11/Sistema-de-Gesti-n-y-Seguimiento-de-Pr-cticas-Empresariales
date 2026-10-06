@@ -108,7 +108,8 @@ export class StudentApplicationService {
     }
 
     // 4. Validar créditos académicos aprobados (Mínimo 100 créditos)
-    const approvedCredits = student.approvedCredits ?? 0;
+    const studentWithAcademics = student as any;
+    const approvedCredits = studentWithAcademics.approvedCredits ?? 0;
     if (approvedCredits < REQUIRED_CREDITS_THRESHOLD) {
       reasons.push(
         `Créditos insuficientes: cuenta con ${approvedCredits} créditos aprobados y se requieren mínimo ${REQUIRED_CREDITS_THRESHOLD}`
@@ -116,7 +117,7 @@ export class StudentApplicationService {
     }
 
     // 5. Validar promedio ponderado acumulado (Mínimo 3.0)
-    const academicAverage = student.academicAverage ?? null;
+    const academicAverage = studentWithAcademics.academicAverage ?? null;
     if (academicAverage !== null && academicAverage < MINIMUM_ACADEMIC_AVERAGE) {
       reasons.push(
         `Promedio insuficiente: cuenta con promedio ${academicAverage.toFixed(2)} y el mínimo exigido es ${MINIMUM_ACADEMIC_AVERAGE.toFixed(1)}`
@@ -145,8 +146,8 @@ export class StudentApplicationService {
       studentId: student.id,
       studentName: student.name,
       studentCode: student.studentCode,
-      approvedCredits: student.approvedCredits,
-      academicAverage: student.academicAverage,
+      approvedCredits: studentWithAcademics.approvedCredits ?? null,
+      academicAverage: studentWithAcademics.academicAverage ?? null,
       requiredCredits: REQUIRED_CREDITS_THRESHOLD,
       minimumAverage: MINIMUM_ACADEMIC_AVERAGE,
       hasActivePractice,
@@ -298,8 +299,8 @@ export class StudentApplicationService {
             name: student.name,
             email: student.email,
             studentCode: student.studentCode,
-            academicAverage: student.academicAverage,
-            approvedCredits: student.approvedCredits,
+            academicAverage: (student as any).academicAverage ?? null,
+            approvedCredits: (student as any).approvedCredits ?? null,
           }
         : undefined,
       createdAt: result.application.createdAt,
@@ -321,6 +322,9 @@ export class StudentApplicationService {
     const { vacancies, total } = await this.vacancyRepo.findAvailableVacancies({
       search: filter.search,
       city: filter.city,
+      program: filter.program,
+      academicPeriod: filter.academicPeriod,
+      companyId: filter.companyId,
       status: filter.status,
       skip,
       take: limit,
@@ -335,6 +339,8 @@ export class StudentApplicationService {
         title: v.title,
         description: v.description,
         requirements: v.requirements,
+        program: v.program || 'Ingeniería de Sistemas',
+        academicPeriod: v.academicPeriod || null,
         vacanciesCount: v.vacanciesCount,
         status: v.status,
         startDate: v.startDate,
@@ -380,6 +386,8 @@ export class StudentApplicationService {
       title: vacancy.title,
       description: vacancy.description,
       requirements: vacancy.requirements,
+      program: vacancy.program || 'Ingeniería de Sistemas',
+      academicPeriod: vacancy.academicPeriod || null,
       vacanciesCount: vacancy.vacanciesCount,
       status: vacancy.status,
       startDate: vacancy.startDate,

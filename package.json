@@ -18,7 +18,8 @@
     "test:auth": "npx tsx tests/cu01-authentication.test.ts",
     "test:hu07": "npx tsx tests/hu07-company-registration.test.ts",
     "test:postulacion": "npx tsx tests/hu-estudiante-postulacion.test.ts",
-    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/cu01-authentication.test.ts && npx tsx tests/hu07-company-registration.test.ts && npx tsx tests/hu-estudiante-postulacion.test.ts"
+    "test:convocatoria": "npx tsx tests/hu-empleador-convocatoria.test.ts",
+    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/cu01-authentication.test.ts && npx tsx tests/hu07-company-registration.test.ts && npx tsx tests/hu-estudiante-postulacion.test.ts && npx tsx tests/hu-empleador-convocatoria.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

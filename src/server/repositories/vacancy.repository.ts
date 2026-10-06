@@ -1,5 +1,5 @@
 // ==============================================================================
-// SIGETRAP - Repositorio de Vacantes de Práctica Empresarial
+// SIGETRAP - Repositorio de Vacantes y Convocatorias de Práctica Empresarial
 // Capa de Repositorios (RNF11)
 // ==============================================================================
 
@@ -51,10 +51,14 @@ export class VacancyRepository {
 
   /**
    * Lista vacantes disponibles ofertadas por empresas con convenios vigentes
+   * Soporta filtros por búsqueda, ciudad, programa académico y periodo académico
    */
   async findAvailableVacancies(params: {
     search?: string;
     city?: string;
+    program?: string;
+    academicPeriod?: string;
+    companyId?: string;
     status?: VacancyStatus;
     skip?: number;
     take?: number;
@@ -64,6 +68,9 @@ export class VacancyRepository {
     const where: Prisma.VacancyWhereInput = {
       deletedAt: null,
       status: params.status || { in: ['PUBLICADA', 'EN_SELECCION'] },
+      ...(params.companyId ? { companyId: params.companyId } : {}),
+      ...(params.program ? { program: { contains: params.program.trim(), mode: 'insensitive' } } : {}),
+      ...(params.academicPeriod ? { academicPeriod: params.academicPeriod.trim() } : {}),
       // RN-01: La empresa debe tener convenio VIGENTE
       company: {
         deletedAt: null,
@@ -86,6 +93,8 @@ export class VacancyRepository {
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { requirements: { contains: search, mode: 'insensitive' } },
+        { program: { contains: search, mode: 'insensitive' } },
+        { academicPeriod: { contains: search, mode: 'insensitive' } },
         { company: { businessName: { contains: search, mode: 'insensitive' } } },
       ];
     }
@@ -125,7 +134,46 @@ export class VacancyRepository {
   }
 
   /**
-   * Crea una nueva vacante
+   * Obtiene todas las convocatorias registradas por una empresa específica
+   */
+  async findByCompanyId(companyId: string, status?: VacancyStatus) {
+    const where: Prisma.VacancyWhereInput = {
+      companyId,
+      deletedAt: null,
+      ...(status ? { status } : {}),
+    };
+
+    return prisma.vacancy.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        company: {
+          include: {
+            agreements: {
+              where: { deletedAt: null },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+            practices: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Crea una nueva vacante / convocatoria
    */
   async create(data: Prisma.VacancyCreateInput) {
     return prisma.vacancy.create({
@@ -137,6 +185,47 @@ export class VacancyRepository {
               where: { deletedAt: null },
               orderBy: { createdAt: 'desc' },
             },
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Actualiza los datos de una convocatoria existente
+   */
+  async update(id: string, data: Prisma.VacancyUpdateInput) {
+    return prisma.vacancy.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+      include: {
+        company: {
+          include: {
+            agreements: {
+              where: { deletedAt: null },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
           },
         },
       },

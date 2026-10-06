@@ -200,6 +200,8 @@ model Vacancy {
   title          String
   description    String
   requirements   String
+  program        String        @default("Ingeniería de Sistemas")
+  academicPeriod String?       @map("academic_period")
   vacanciesCount Int           @default(1) @map("vacancies_count")
   status         VacancyStatus @default(PUBLICADA)
   startDate      DateTime?     @map("start_date")

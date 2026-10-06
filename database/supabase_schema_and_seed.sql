@@ -184,6 +184,8 @@ CREATE TABLE IF NOT EXISTS "vacancies" (
     "title" VARCHAR(255) NOT NULL,
     "description" TEXT NOT NULL,
     "requirements" TEXT NOT NULL,
+    "program" VARCHAR(150) NOT NULL DEFAULT 'Ingeniería de Sistemas',
+    "academic_period" VARCHAR(50),
     "vacancies_count" INT NOT NULL DEFAULT 1,
     "status" "VacancyStatus" NOT NULL DEFAULT 'PUBLICADA',
     "start_date" TIMESTAMPTZ,
