@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, GraduationCap, Building2 } from 'lucide-react';
+import { Shield, User, LogOut, Building2, Briefcase } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -73,6 +73,13 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
+            <Link
+              href="/vacantes"
+              className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Vacantes</span>
+            </Link>
             <Link
               href="/empresas"
               className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
