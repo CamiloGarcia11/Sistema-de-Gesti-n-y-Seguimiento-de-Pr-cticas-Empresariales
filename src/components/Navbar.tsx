@@ -3,11 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-<<<<<<< Updated upstream
-import { Shield, User, LogOut, GraduationCap } from 'lucide-react';
-=======
-import { Shield, User, LogOut, GraduationCap, Building2, Briefcase } from 'lucide-react';
->>>>>>> Stashed changes
+import { Shield, User, LogOut, Building2, Briefcase } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {

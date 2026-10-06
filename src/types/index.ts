@@ -157,6 +157,67 @@ export interface DeactivateUserResponseDTO {
 }
 
 // ------------------------------------------------------------------------------
+// DTOs de Gestión y Radicación de Empresas Receptoras (HU07)
+// ------------------------------------------------------------------------------
+
+export interface CreateCompanyDTO {
+  nit: string;
+  businessName: string;
+  legalRepresentative: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  city: string;
+  isActive?: boolean;
+}
+
+export interface UpdateCompanyDTO {
+  businessName?: string;
+  legalRepresentative?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  city?: string;
+  isActive?: boolean;
+}
+
+export interface CompanyResponseDTO {
+  id: string;
+  nit: string;
+  businessName: string;
+  legalRepresentative: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  city: string;
+  isActive: boolean;
+  agreementsCount?: number;
+  activeAgreement?: {
+    id: string;
+    agreementNumber: string;
+    status: AgreementStatus;
+    startDate: Date;
+    endDate: Date;
+  } | null;
+  tutorsCount?: number;
+  practicesCount?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CompanyFilterDTO {
+  search?: string;
+  city?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface VerifyNitDTO {
+  nit: string;
+}
+
+// ------------------------------------------------------------------------------
 // DTOs de Máquina de Estados y Transiciones
 // ------------------------------------------------------------------------------
 

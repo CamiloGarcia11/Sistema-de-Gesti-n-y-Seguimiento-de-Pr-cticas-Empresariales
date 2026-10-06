@@ -48,16 +48,10 @@ export default function AdminUsersPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'habilitar' | 'registrar'>('habilitar');
 
-  // Estado para la pestaña de "Habilitación Rápida por Documento"
+  // Estado para la pestaña de "Habilitación/Desactivación Rápida por Documento"
+  // Simplificado: únicamente el número de documento.
   const [enableForm, setEnableForm] = useState({
     documentNumber: '',
-    documentType: 'CC',
-    email: '',
-    name: '',
-    password: 'Password123!',
-    role: 'ESTUDIANTE' as Role,
-    studentCode: '',
-    phone: '',
   });
   const [isVerifyingDoc, setIsVerifyingDoc] = useState(false);
   const [docVerificationResult, setDocVerificationResult] = useState<{
@@ -68,6 +62,9 @@ export default function AdminUsersPage() {
   const [enableSubmitting, setEnableSubmitting] = useState(false);
   const [enableError, setEnableError] = useState<string | null>(null);
   const [enableSuccess, setEnableSuccess] = useState<string | null>(null);
+  const [disableSubmitting, setDisableSubmitting] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
+  const [disableSuccess, setDisableSuccess] = useState<string | null>(null);
 
   // Estados del Formulario de Registro Completo
   const [formData, setFormData] = useState({
@@ -137,7 +134,7 @@ export default function AdminUsersPage() {
     }
   }, [currentUser, loadUsers]);
 
-  // Verificar Documento en tiempo real
+  // Verificar Documento en tiempo real (solo para mostrar estado informativo)
   const handleVerifyDocument = async (doc: string) => {
     if (!doc.trim() || doc.trim().length < 4) {
       setDocVerificationResult(null);
@@ -156,19 +153,8 @@ export default function AdminUsersPage() {
             user: data.data.user,
             status: data.data.user.status,
           });
-          // Auto-rellenar campos si ya existe
-          setEnableForm((prev) => ({
-            ...prev,
-            email: data.data.user.email,
-            name: data.data.user.name,
-            role: data.data.user.role,
-            studentCode: data.data.user.studentCode || '',
-            phone: data.data.user.phone || '',
-          }));
         } else {
-          setDocVerificationResult({
-            exists: false,
-          });
+          setDocVerificationResult({ exists: false });
         }
       }
     } catch (e) {
@@ -178,18 +164,20 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Habilitar Usuario por Documento
+  // Habilitar Usuario únicamente por Documento
   const handleEnableByDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     setEnableSubmitting(true);
     setEnableError(null);
     setEnableSuccess(null);
+    setDisableError(null);
+    setDisableSuccess(null);
 
     try {
       const res = await fetch('/api/v1/usuarios/habilitar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(enableForm),
+        body: JSON.stringify({ documentNumber: enableForm.documentNumber.trim() }),
       });
 
       const data = await res.json();
@@ -202,22 +190,53 @@ export default function AdminUsersPage() {
 
       setEnableSuccess(data.data.message || '¡Usuario habilitado exitosamente!');
       setDocVerificationResult(null);
-      setEnableForm({
-        documentNumber: '',
-        documentType: 'CC',
-        email: '',
-        name: '',
-        password: 'Password123!',
-        role: 'ESTUDIANTE',
-        studentCode: '',
-        phone: '',
-      });
+      setEnableForm({ documentNumber: '' });
       loadUsers();
     } catch (err) {
       console.error(err);
       setEnableError('Error de red al habilitar el usuario.');
     } finally {
       setEnableSubmitting(false);
+    }
+  };
+
+  // Desactivar Usuario únicamente por Documento
+  const handleDisableByDocument = async () => {
+    if (!enableForm.documentNumber.trim() || enableForm.documentNumber.trim().length < 4) {
+      setDisableError('Ingresa un número de documento válido (mínimo 4 caracteres).');
+      return;
+    }
+
+    setDisableSubmitting(true);
+    setDisableError(null);
+    setDisableSuccess(null);
+    setEnableError(null);
+    setEnableSuccess(null);
+
+    try {
+      const res = await fetch('/api/v1/usuarios/deshabilitar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentNumber: enableForm.documentNumber.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setDisableError(data.error?.message || 'No fue posible desactivar al usuario');
+        setDisableSubmitting(false);
+        return;
+      }
+
+      setDisableSuccess(data.data.message || '¡Usuario desactivado exitosamente!');
+      setDocVerificationResult(null);
+      setEnableForm({ documentNumber: '' });
+      loadUsers();
+    } catch (err) {
+      console.error(err);
+      setDisableError('Error de red al desactivar el usuario.');
+    } finally {
+      setDisableSubmitting(false);
     }
   };
 
@@ -533,13 +552,13 @@ export default function AdminUsersPage() {
                 </button>
               </div>
 
-              {/* TAB 1: HABILITACIÓN RÁPIDA POR DOCUMENTO */}
+              {/* TAB 1: HABILITACIÓN / DESACTIVACIÓN RÁPIDA POR DOCUMENTO */}
               {activeTab === 'habilitar' && (
                 <div className="p-6 space-y-4 animate-fadeIn">
                   <div>
-                    <h3 className="text-sm font-extrabold text-slate-900">Validar y Habilitar por Documento</h3>
+                    <h3 className="text-sm font-extrabold text-slate-900">Habilitar / Desactivar por Documento</h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Ingresa el documento para verificar su estado en el sistema y habilitar el acceso.
+                      Ingresa el número de documento de una cuenta existente para habilitarla o desactivarla.
                     </p>
                   </div>
 
@@ -559,6 +578,26 @@ export default function AdminUsersPage() {
                       <div>
                         <span className="font-bold block text-emerald-900">Operación Exitosa:</span>
                         <span>{enableSuccess}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {disableError && (
+                    <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-3 animate-fadeIn">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                      <div>
+                        <span className="font-bold block text-red-900">No se pudo desactivar:</span>
+                        <span>{disableError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {disableSuccess && (
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-3 animate-fadeIn">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                      <div>
+                        <span className="font-bold block text-emerald-900">Operación Exitosa:</span>
+                        <span>{disableSuccess}</span>
                       </div>
                     </div>
                   )}
@@ -585,7 +624,7 @@ export default function AdminUsersPage() {
                           required
                           value={enableForm.documentNumber}
                           onChange={(e) => {
-                            setEnableForm({ ...enableForm, documentNumber: e.target.value });
+                            setEnableForm({ documentNumber: e.target.value });
                             handleVerifyDocument(e.target.value);
                           }}
                           placeholder="Ej. 1090123456"
@@ -607,83 +646,48 @@ export default function AdminUsersPage() {
                               </span>
                             </div>
                           ) : (
-                            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-[11px] flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-red-600" />
-                              <span>Documento no registrado. Se creará y habilitará como nueva cuenta.</span>
+                            <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-[11px] flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                              <span>Documento no registrado en el sistema.</span>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Correo Institucional */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Correo Institucional *
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <Mail className="w-4 h-4" />
-                        </div>
-                        <input
-                          type="email"
-                          required
-                          value={enableForm.email}
-                          onChange={(e) => setEnableForm({ ...enableForm, email: e.target.value })}
-                          placeholder="usuario@ufps.edu.co"
-                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Nombre del Usuario (si es nuevo o desea actualizar) */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Nombre Completo {!docVerificationResult?.exists && '*'}
-                      </label>
-                      <input
-                        type="text"
-                        required={!docVerificationResult?.exists}
-                        value={enableForm.name}
-                        onChange={(e) => setEnableForm({ ...enableForm, name: e.target.value })}
-                        placeholder="Ej. Laura Victoria Restrepo"
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Rol */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Rol a Habilitar *
-                      </label>
-                      <select
-                        value={enableForm.role}
-                        onChange={(e) => setEnableForm({ ...enableForm, role: e.target.value as Role })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all cursor-pointer"
+                    {/* Botones de acción */}
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        type="submit"
+                        disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
+                        className="flex-1 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                       >
-                        <option value="ESTUDIANTE">ESTUDIANTE (Practicante)</option>
-                        <option value="DOCENTE_PRACTICA">DOCENTE_PRACTICA (Supervisor)</option>
-                        <option value="TUTOR_EMPRESARIAL">TUTOR_EMPRESARIAL (Empresa)</option>
-                        <option value="DIRECTOR_PROGRAMA">DIRECTOR_PROGRAMA (Programa)</option>
-                        <option value="ADMIN">ADMIN (Administrador)</option>
-                      </select>
-                    </div>
+                        {enableSubmitting ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <BadgeCheck className="w-4 h-4" />
+                            <span>Habilitar</span>
+                          </>
+                        )}
+                      </button>
 
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={enableSubmitting}
-                      className="w-full mt-3 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                    >
-                      {enableSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <BadgeCheck className="w-4 h-4" />
-                          <span>Habilitar y Activar Usuario</span>
-                        </>
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleDisableByDocument}
+                        disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
+                        className="flex-1 py-3.5 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-red-700 border-2 border-red-700 font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {disableSubmitting ? (
+                          <div className="w-5 h-5 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <PowerOff className="w-4 h-4" />
+                            <span>Desactivar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </form>
                 </div>
               )}
