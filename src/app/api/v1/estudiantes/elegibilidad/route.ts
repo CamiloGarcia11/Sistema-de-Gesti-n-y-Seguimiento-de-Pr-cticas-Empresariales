@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Consulta de Elegibilidad del Estudiante
 // Capa de Controladores (Route Handler RNF11)

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Radicación y Consulta de Empresas (HU07)
 // Capa de Controladores (Route Handler RNF11)

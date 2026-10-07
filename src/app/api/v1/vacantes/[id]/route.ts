@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Detalle y Edición de Convocatoria
 // Capa de Controladores (Route Handler RNF11)

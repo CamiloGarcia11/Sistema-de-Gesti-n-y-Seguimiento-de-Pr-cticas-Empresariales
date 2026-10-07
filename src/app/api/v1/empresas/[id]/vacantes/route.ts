@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Convocatorias por Empresa Empleadora
 // Capa de Controladores (Route Handler RNF11)

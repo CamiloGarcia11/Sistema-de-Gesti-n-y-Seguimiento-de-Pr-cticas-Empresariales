@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Cierre de Sesión (Logout)
 // Endpoint: POST /api/v1/auth/logout

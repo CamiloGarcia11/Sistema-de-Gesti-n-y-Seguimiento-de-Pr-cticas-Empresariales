@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Perfil del Usuario Autenticado
 // Endpoint: GET /api/v1/auth/me

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Postulación de Estudiante a Vacante
 // Capa de Controladores (Route Handler RNF11)

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Consulta y Supervisión de Prácticas
 // Capa de Controladores (Route Handler RNF11)

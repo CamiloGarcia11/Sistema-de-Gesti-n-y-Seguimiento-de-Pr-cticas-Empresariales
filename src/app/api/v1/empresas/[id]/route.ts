@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Detalle y Actualización de Empresa (HU07)
 // Capa de Controladores (Route Handler RNF11)

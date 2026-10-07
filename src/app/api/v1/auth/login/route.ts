@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Inicio de Sesión (Login)
 // Capa de Controladores (Route Handler RNF11)

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Postulaciones y Candidatos
 // Capa de Controladores (Route Handler RNF11)

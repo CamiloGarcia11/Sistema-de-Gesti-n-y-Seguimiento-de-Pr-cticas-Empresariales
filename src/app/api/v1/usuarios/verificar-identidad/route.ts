@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Verificación de Identidad de Usuario
 // Capa de Controladores (Route Handler RNF11)

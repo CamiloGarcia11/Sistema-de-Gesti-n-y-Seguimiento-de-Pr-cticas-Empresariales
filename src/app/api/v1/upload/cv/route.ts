@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Carga de Soporte de Hoja de Vida (CV)
 // Capa de Controladores (Route Handler RNF11)

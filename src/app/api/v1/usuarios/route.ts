@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Registro y Consulta de Usuarios (HU01)
 // Capa de Controladores (Route Handler RNF11)

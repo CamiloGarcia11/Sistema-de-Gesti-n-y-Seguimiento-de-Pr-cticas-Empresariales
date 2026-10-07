@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador para Publicar Convocatoria en Borrador
 // Capa de Controladores (Route Handler RNF11)

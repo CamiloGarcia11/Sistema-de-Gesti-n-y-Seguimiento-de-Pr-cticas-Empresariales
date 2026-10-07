@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Verificación en Tiempo Real de NIT (HU07)
 // Capa de Controladores (Route Handler RNF11)

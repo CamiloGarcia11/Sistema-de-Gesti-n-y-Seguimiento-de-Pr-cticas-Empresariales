@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Desactivación de Usuarios (HU01 - Criterio 2)
 // Capa de Controladores (Route Handler RNF11)

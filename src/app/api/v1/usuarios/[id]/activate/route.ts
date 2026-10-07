@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // ==============================================================================
 // SIGETRAP - Controlador de Activación/Habilitación de Usuarios (HU01)
 // Capa de Controladores (Route Handler RNF11)
