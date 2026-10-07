@@ -32,6 +32,7 @@ import {
   ShieldX,
   UserCog,
   BadgeCheck,
+  X,
 } from 'lucide-react';
 import { Role, UserStatus, UserResponseDTO } from '@/types';
 
@@ -48,7 +49,6 @@ export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState<'habilitar' | 'registrar'>('habilitar');
 
   // Estado para la pestaña de "Habilitación/Desactivación Rápida por Documento"
-  // Simplificado: únicamente el número de documento.
   const [enableForm, setEnableForm] = useState({
     documentNumber: '',
   });
@@ -135,16 +135,17 @@ export default function AdminUsersPage() {
     }
   }, [currentUser, loadUsers]);
 
-  // Verificar Documento en tiempo real (solo para mostrar estado informativo)
+  // Verificar Documento en tiempo real (muestra el usuario y estado actual)
   const handleVerifyDocument = async (doc: string) => {
-    if (!doc.trim() || doc.trim().length < 4) {
+    const cleanDoc = doc.trim();
+    if (!cleanDoc || cleanDoc.length < 3) {
       setDocVerificationResult(null);
       return;
     }
 
     setIsVerifyingDoc(true);
     try {
-      const res = await fetch(`/api/v1/usuarios/verificar-identidad?documentNumber=${doc.trim()}`);
+      const res = await fetch(`/api/v1/usuarios/verificar-identidad?documentNumber=${encodeURIComponent(cleanDoc)}`);
       const data = await res.json();
 
       if (data.success && data.data) {
@@ -155,7 +156,7 @@ export default function AdminUsersPage() {
             status: data.data.user.status,
           });
         } else {
-          setDocVerificationResult({ exists: false });
+          setDocVerificationResult({ exists: false, user: null });
         }
       }
     } catch (e) {
@@ -166,8 +167,14 @@ export default function AdminUsersPage() {
   };
 
   // Habilitar Usuario únicamente por Documento
-  const handleEnableByDocument = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEnableByDocument = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanDoc = enableForm.documentNumber.trim();
+    if (!cleanDoc || cleanDoc.length < 3) {
+      setEnableError('Ingresa un número de documento válido (mínimo 3 caracteres).');
+      return;
+    }
+
     setEnableSubmitting(true);
     setEnableError(null);
     setEnableSuccess(null);
@@ -178,20 +185,26 @@ export default function AdminUsersPage() {
       const res = await fetch('/api/v1/usuarios/habilitar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentNumber: enableForm.documentNumber.trim() }),
+        body: JSON.stringify({ documentNumber: cleanDoc }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         setEnableError(data.error?.message || 'No fue posible habilitar al usuario');
-        setEnableSubmitting(false);
         return;
       }
 
       setEnableSuccess(data.data.message || '¡Usuario habilitado exitosamente!');
-      setDocVerificationResult(null);
-      setEnableForm({ documentNumber: '' });
+      if (data.data.user) {
+        setDocVerificationResult({
+          exists: true,
+          user: data.data.user,
+          status: data.data.user.status,
+        });
+      } else {
+        handleVerifyDocument(cleanDoc);
+      }
       loadUsers();
     } catch (err) {
       console.error(err);
@@ -203,8 +216,9 @@ export default function AdminUsersPage() {
 
   // Desactivar Usuario únicamente por Documento
   const handleDisableByDocument = async () => {
-    if (!enableForm.documentNumber.trim() || enableForm.documentNumber.trim().length < 4) {
-      setDisableError('Ingresa un número de documento válido (mínimo 4 caracteres).');
+    const cleanDoc = enableForm.documentNumber.trim();
+    if (!cleanDoc || cleanDoc.length < 3) {
+      setDisableError('Ingresa un número de documento válido (mínimo 3 caracteres).');
       return;
     }
 
@@ -218,20 +232,26 @@ export default function AdminUsersPage() {
       const res = await fetch('/api/v1/usuarios/deshabilitar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentNumber: enableForm.documentNumber.trim() }),
+        body: JSON.stringify({ documentNumber: cleanDoc }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         setDisableError(data.error?.message || 'No fue posible desactivar al usuario');
-        setDisableSubmitting(false);
         return;
       }
 
       setDisableSuccess(data.data.message || '¡Usuario desactivado exitosamente!');
-      setDocVerificationResult(null);
-      setEnableForm({ documentNumber: '' });
+      if (data.data.user) {
+        setDocVerificationResult({
+          exists: true,
+          user: data.data.user,
+          status: data.data.user.status,
+        });
+      } else {
+        handleVerifyDocument(cleanDoc);
+      }
       loadUsers();
     } catch (err) {
       console.error(err);
@@ -307,7 +327,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Desactivación de Cuenta
+  // Desactivación de Cuenta desde la Tabla
   const handleDeactivate = async (userId: string, userName: string) => {
     if (!confirm(`¿Confirma la desactivación de "${userName}"? Esto revoca inmediatamente todas sus sesiones activas.`)) {
       return;
@@ -329,6 +349,9 @@ export default function AdminUsersPage() {
           type: 'success',
         });
         loadUsers();
+        if (enableForm.documentNumber.trim()) {
+          handleVerifyDocument(enableForm.documentNumber.trim());
+        }
       } else {
         setActionFeedback({
           id: userId,
@@ -344,7 +367,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Habilitación / Activación de Cuenta
+  // Habilitación / Activación de Cuenta desde la Tabla
   const handleActivate = async (userId: string) => {
     setActionLoadingId(userId);
     setActionFeedback(null);
@@ -362,6 +385,9 @@ export default function AdminUsersPage() {
           type: 'success',
         });
         loadUsers();
+        if (enableForm.documentNumber.trim()) {
+          handleVerifyDocument(enableForm.documentNumber.trim());
+        }
       } else {
         setActionFeedback({
           id: userId,
@@ -461,10 +487,10 @@ export default function AdminUsersPage() {
                 <span>Panel de Administración • Cuentas & Seguridad</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Habilitación y Registro de Usuarios
+                Habilitación y Control de Usuarios
               </h1>
               <p className="text-sm text-slate-600 mt-1 max-w-2xl">
-                Validación unívoca de documento de identidad y correo institucional, activación de cuentas y control de accesos.
+                Búsqueda por cédula/documento, visualización del estado en tiempo real, activación y desactivación de accesos institucionales.
               </p>
             </div>
 
@@ -572,7 +598,7 @@ export default function AdminUsersPage() {
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900">Habilitar / Desactivar por Documento</h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Ingresa el número de documento de una cuenta existente para habilitarla o desactivarla.
+                      Digita el número de documento para consultar su estado y habilitar o deshabilitar la cuenta.
                     </p>
                   </div>
 
@@ -580,7 +606,7 @@ export default function AdminUsersPage() {
                     <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-3 animate-fadeIn">
                       <AlertTriangle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
                       <div>
-                        <span className="font-bold block text-red-900">No se pudo habilitar:</span>
+                        <span className="font-bold block text-red-900">Error:</span>
                         <span>{enableError}</span>
                       </div>
                     </div>
@@ -600,7 +626,7 @@ export default function AdminUsersPage() {
                     <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-3 animate-fadeIn">
                       <AlertTriangle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
                       <div>
-                        <span className="font-bold block text-red-900">No se pudo desactivar:</span>
+                        <span className="font-bold block text-red-900">Error:</span>
                         <span>{disableError}</span>
                       </div>
                     </div>
@@ -621,11 +647,11 @@ export default function AdminUsersPage() {
                     <div>
                       <div className="flex justify-between items-center mb-1.5">
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Número de Documento *
+                          Número de Documento / Cédula *
                         </label>
                         {isVerifyingDoc && (
                           <span className="text-[10px] text-red-700 font-semibold flex items-center gap-1">
-                            <RefreshCw className="w-3 h-3 animate-spin" /> Verificando...
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Buscando...
                           </span>
                         )}
                       </div>
@@ -638,50 +664,124 @@ export default function AdminUsersPage() {
                           required
                           value={enableForm.documentNumber}
                           onChange={(e) => {
-                            setEnableForm({ documentNumber: e.target.value });
-                            handleVerifyDocument(e.target.value);
+                            const val = e.target.value;
+                            setEnableForm({ documentNumber: val });
+                            handleVerifyDocument(val);
                           }}
                           placeholder="Ej. 1090123456"
-                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
+                          className="w-full pl-10 pr-10 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                         />
+                        {enableForm.documentNumber && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEnableForm({ documentNumber: '' });
+                              setDocVerificationResult(null);
+                              setEnableSuccess(null);
+                              setEnableError(null);
+                              setDisableSuccess(null);
+                              setDisableError(null);
+                            }}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Info Badge de Verificación de Documento */}
+                      {/* Tarjeta de Información y Estado del Usuario Encontrado */}
                       {docVerificationResult && (
-                        <div className="mt-2 text-xs">
-                          {docVerificationResult.exists ? (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-center justify-between">
-                              <div>
-                                <span className="font-bold block text-slate-900">{docVerificationResult.user?.name}</span>
-                                <span className="text-[11px] text-slate-700">Estado actual: <strong className="text-slate-900">{docVerificationResult.user?.status}</strong></span>
+                        <div className="mt-3 text-xs animate-fadeIn">
+                          {docVerificationResult.exists && docVerificationResult.user ? (
+                            <div className={`p-4 rounded-2xl border transition-all ${
+                              docVerificationResult.user.status === 'ACTIVO' && docVerificationResult.user.isActive
+                                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-sm'
+                                : 'bg-red-50/90 border-red-300 text-red-950 shadow-sm'
+                            }`}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-black text-sm text-slate-900">
+                                      {docVerificationResult.user.name}
+                                    </span>
+                                    {getRoleBadge(docVerificationResult.user.role)}
+                                  </div>
+                                  <p className="text-[11px] text-slate-700 font-medium">
+                                    Doc: <strong className="text-slate-900">{docVerificationResult.user.documentNumber}</strong> • Correo: <strong className="text-slate-900">{docVerificationResult.user.email}</strong>
+                                  </p>
+                                </div>
+                                
+                                <div className="text-right shrink-0">
+                                  {docVerificationResult.user.status === 'ACTIVO' && docVerificationResult.user.isActive ? (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 border border-emerald-300 text-emerald-800 shadow-sm">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                                      ACTIVO / HABILITADO
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-red-100 border border-red-300 text-red-800 shadow-sm">
+                                      <span className="w-2 h-2 rounded-full bg-red-600" />
+                                      {docVerificationResult.user.status === 'BLOQUEADO' ? 'BLOQUEADO' : 'INACTIVO / DESHABILITADO'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 rounded text-[10px] font-bold uppercase text-amber-900">
-                                Encontrado
-                              </span>
+
+                              <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700">
+                                  {docVerificationResult.user.status === 'ACTIVO' && docVerificationResult.user.isActive
+                                    ? '🟢 Cuenta actualmente habilitada con acceso total al sistema.'
+                                    : '🔴 Cuenta actualmente deshabilitada (sesiones revocadas).'}
+                                </span>
+                              </div>
                             </div>
                           ) : (
-                            <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-[11px] flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                              <span className="font-semibold">Documento no registrado en el sistema.</span>
+                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-2.5">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-bold block text-amber-950">Documento no registrado en el sistema</span>
+                                  <span className="text-[11px] text-amber-800">
+                                    No se encontró ningún usuario con este documento. Usa la pestaña "Registro Completo" para crearlo.
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, documentNumber: enableForm.documentNumber });
+                                  setActiveTab('registrar');
+                                }}
+                                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] shrink-0 cursor-pointer shadow-sm"
+                              >
+                                Registrar
+                              </button>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Botones de acción */}
-                    <div className="flex gap-3 mt-3">
+                    {/* Botones de acción (Habilitar / Desactivar) */}
+                    <div className="grid grid-cols-2 gap-3 mt-4">
                       <button
                         type="submit"
                         disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
-                        className="flex-1 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed"
+                        className={`py-3.5 px-4 font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed ${
+                          docVerificationResult?.user?.status === 'ACTIVO' && docVerificationResult.user.isActive
+                            ? 'bg-slate-100 hover:bg-emerald-50 text-emerald-800 border-2 border-emerald-600'
+                            : 'bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white shadow-emerald-700/20'
+                        }`}
                       >
                         {enableSubmitting ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <>
                             <BadgeCheck className="w-4 h-4" />
-                            <span>Habilitar</span>
+                            <span>
+                              {docVerificationResult?.user?.status === 'ACTIVO' && docVerificationResult.user.isActive
+                                ? 'Re-habilitar'
+                                : 'Habilitar Cuenta'}
+                            </span>
                           </>
                         )}
                       </button>
@@ -690,14 +790,22 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={handleDisableByDocument}
                         disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
-                        className="flex-1 py-3.5 px-4 bg-white hover:bg-red-50 active:bg-red-100 text-red-700 border-2 border-red-700 hover:border-red-800 font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:border-slate-200 disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                        className={`py-3.5 px-4 font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed ${
+                          docVerificationResult?.user?.status === 'INACTIVO' || (docVerificationResult?.exists && !docVerificationResult?.user?.isActive)
+                            ? 'bg-slate-100 hover:bg-red-50 text-red-800 border-2 border-red-600'
+                            : 'bg-red-700 hover:bg-red-800 active:bg-red-900 text-white shadow-red-700/20'
+                        }`}
                       >
                         {disableSubmitting ? (
-                          <div className="w-5 h-5 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <>
                             <PowerOff className="w-4 h-4" />
-                            <span>Desactivar</span>
+                            <span>
+                              {docVerificationResult?.user?.status === 'INACTIVO' || (docVerificationResult?.exists && !docVerificationResult?.user?.isActive)
+                                ? 'Ya Desactivada'
+                                : 'Desactivar Cuenta'}
+                            </span>
                           </>
                         )}
                       </button>

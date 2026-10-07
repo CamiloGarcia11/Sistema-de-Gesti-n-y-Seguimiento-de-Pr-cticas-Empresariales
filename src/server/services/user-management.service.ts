@@ -215,7 +215,7 @@ export class UserManagementService {
     dto: {
       documentNumber: string;
       documentType?: string;
-      email: string;
+      email?: string;
       name?: string;
       password?: string;
       role?: Role;
@@ -235,30 +235,32 @@ export class UserManagementService {
     }
 
     const normalizedDoc = dto.documentNumber.trim();
-    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedEmail = dto.email ? dto.email.trim().toLowerCase() : undefined;
 
     // 1. Buscar si ya existe una cuenta con este número de documento
     const existingUserByDoc = await this.userRepo.findByDocumentNumber(normalizedDoc);
 
     if (existingUserByDoc) {
       // Validar si el correo ingresado pertenece a otro usuario distinto
-      const existingUserByEmail = await this.userRepo.findByEmail(normalizedEmail);
-      if (existingUserByEmail && existingUserByEmail.id !== existingUserByDoc.id) {
-        throw new ValidationError(
-          `El correo '${normalizedEmail}' ya se encuentra registrado con otro documento de identidad`,
-          'EMAIL_ALREADY_EXISTS',
-          409,
-          'email'
-        );
+      if (normalizedEmail && normalizedEmail !== existingUserByDoc.email.toLowerCase()) {
+        const existingUserByEmail = await this.userRepo.findByEmail(normalizedEmail);
+        if (existingUserByEmail && existingUserByEmail.id !== existingUserByDoc.id) {
+          throw new ValidationError(
+            `El correo '${normalizedEmail}' ya se encuentra registrado con otro documento de identidad`,
+            'EMAIL_ALREADY_EXISTS',
+            409,
+            'email'
+          );
+        }
       }
 
       // Preparar datos de actualización y habilitación
       const updateData: Prisma.UserUpdateInput = {
         status: 'ACTIVO',
         isActive: true,
-        email: normalizedEmail,
       };
 
+      if (normalizedEmail) updateData.email = normalizedEmail;
       if (dto.name?.trim()) updateData.name = dto.name.trim();
       if (dto.documentType) updateData.documentType = dto.documentType;
       if (dto.role) updateData.role = dto.role;
@@ -275,11 +277,19 @@ export class UserManagementService {
       return {
         user: this.mapToResponseDTO(updatedUser),
         isNew: false,
-        message: `Cuenta asociada al documento ${normalizedDoc} habilitada exitosamente como ACTIVA.`,
+        message: `Cuenta de ${updatedUser.name} (${normalizedDoc}) habilitada exitosamente como ACTIVA.`,
       };
     }
 
-    // 2. Si no existe por documento, verificar que el correo no esté ocupado
+    // 2. Si no existe por documento, verificar si vienen datos completos para crear nuevo
+    if (!normalizedEmail || !dto.name || !dto.password || !dto.role) {
+      throw new ValidationError(
+        `No se encontró ningún usuario con el documento '${normalizedDoc}'. Para registrarlo por primera vez, utilice el formulario de Registro Completo.`,
+        'USER_NOT_FOUND',
+        404
+      );
+    }
+
     const existingByEmail = await this.userRepo.findByEmail(normalizedEmail);
     if (existingByEmail) {
       throw new ValidationError(
@@ -287,15 +297,6 @@ export class UserManagementService {
         'EMAIL_ALREADY_EXISTS',
         409,
         'email'
-      );
-    }
-
-    // 3. Crear y habilitar nuevo usuario
-    if (!dto.name || !dto.password || !dto.role) {
-      throw new ValidationError(
-        'Para registrar y habilitar un nuevo usuario se requiere nombre, contraseña y rol',
-        'MISSING_REQUIRED_FIELDS',
-        422
       );
     }
 
@@ -320,6 +321,48 @@ export class UserManagementService {
       user: this.mapToResponseDTO(newUser),
       isNew: true,
       message: `Usuario ${newUser.name} registrado y habilitado exitosamente con documento ${normalizedDoc}.`,
+    };
+  }
+
+  /**
+   * Desactiva un usuario por su número de documento de identidad y revoca sus sesiones
+   */
+  async disableUserByDocument(
+    documentNumber: string,
+    actor: AuthenticatedUser
+  ): Promise<{ user: UserResponseDTO; message: string }> {
+    if (actor.role !== 'ADMIN') {
+      throw new ValidationError(
+        'Acceso denegado: Únicamente un administrador puede desactivar usuarios',
+        'ADMIN_AUTH_REQUIRED',
+        403
+      );
+    }
+
+    const normalizedDoc = documentNumber.trim();
+    const user = await this.userRepo.findByDocumentNumber(normalizedDoc);
+
+    if (!user) {
+      throw new ValidationError(
+        `No existe ningún usuario registrado con el documento '${normalizedDoc}'`,
+        'USER_NOT_FOUND',
+        404
+      );
+    }
+
+    if (user.id === actor.id) {
+      throw new ValidationError(
+        'No está permitido desactivar su propia cuenta de administrador',
+        'CANNOT_DEACTIVATE_SELF',
+        400
+      );
+    }
+
+    const updatedUser = await this.userRepo.deactivateUser(user.id);
+
+    return {
+      user: this.mapToResponseDTO(updatedUser),
+      message: `Cuenta de ${updatedUser.name} (${normalizedDoc}) desactivada exitosamente. Sesiones revocadas.`,
     };
   }
 

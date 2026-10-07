@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 // ==============================================================================
-// SIGETRAP - Controlador de Habilitación de Usuarios por Documento (HU01)
+// SIGETRAP - Controlador de Desactivación de Usuarios por Documento (HU01)
 // Capa de Controladores (Route Handler RNF11)
-// Endpoint: POST /api/v1/usuarios/habilitar
+// Endpoint: POST /api/v1/usuarios/deshabilitar
 // ==============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,35 +13,12 @@ import {
   userManagementService,
   ValidationError,
 } from '@/server/services/user-management.service';
-import { ApiResponse, Role } from '@/types';
+import { ApiResponse } from '@/types';
 
-const enableUserSchema = z.object({
+const disableUserSchema = z.object({
   documentNumber: z
     .string({ required_error: 'El número de documento es obligatorio' })
     .min(4, 'El documento debe tener al menos 4 caracteres'),
-  documentType: z.string().default('CC').optional(),
-  email: z.string().email('El formato del correo es inválido').optional(),
-  name: z.string().optional(),
-  password: z.string().min(6).optional(),
-  role: z.enum([
-    'DIRECTOR_PROGRAMA',
-    'ESTUDIANTE',
-    'DOCENTE_PRACTICA',
-    'TUTOR_EMPRESARIAL',
-    'ADMIN',
-  ] as [Role, ...Role[]]).optional(),
-  studentCode: z.string().optional(),
-  academicAverage: z
-    .preprocess(
-      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
-      z.number().min(0).max(5).optional()
-    ),
-  approvedCredits: z
-    .preprocess(
-      (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
-      z.number().int().min(0).optional()
-    ),
-  phone: z.string().optional(),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
@@ -62,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
     }
 
     const body = await req.json();
-    const validationResult = enableUserSchema.safeParse(body);
+    const validationResult = disableUserSchema.safeParse(body);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -79,8 +56,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    const result = await userManagementService.enableUserByDocument(
-      validationResult.data,
+    const result = await userManagementService.disableUserByDocument(
+      validationResult.data.documentNumber,
       actor
     );
 
@@ -108,13 +85,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    console.error('[API_ENABLE_USER_ERROR]:', error);
+    console.error('[API_DISABLE_USER_ERROR]:', error);
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Error al habilitar el usuario en el sistema',
+          message: 'Error al desactivar el usuario en el sistema',
         },
         timestamp: new Date().toISOString(),
       },
