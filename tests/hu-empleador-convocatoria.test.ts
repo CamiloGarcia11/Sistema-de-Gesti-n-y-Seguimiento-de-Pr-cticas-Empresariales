@@ -74,6 +74,15 @@ class MockVacancyRepository extends VacancyRepository {
         businessName: 'Tech Innovations Colombia S.A.S.',
         nit: '900123456-1',
         city: 'Cúcuta',
+        agreements: [],
+      },
+      createdBy: {
+        id: data.createdBy.connect.id,
+        name: 'Tutor Test',
+        email: 'tutor@test.com',
+      },
+      _count: {
+        applications: 0,
       },
       applications: [],
       createdAt: new Date(),
@@ -81,7 +90,7 @@ class MockVacancyRepository extends VacancyRepository {
       deletedAt: null,
     };
     this.vacancies.push(newVacancy);
-    return newVacancy;
+    return newVacancy as any;
   }
 
   async update(id: string, data: any) {
