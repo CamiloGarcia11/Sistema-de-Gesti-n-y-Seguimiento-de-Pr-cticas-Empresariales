@@ -261,11 +261,16 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Copiar al portapapeles
-  const handleCopy = (text: string, id: string) => {
+  // Copiar al portapapeles y opcionalmente cargar en el panel de búsqueda
+  const handleCopy = (text: string, id: string, autoFillDoc?: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+    if (autoFillDoc) {
+      setEnableForm({ documentNumber: autoFillDoc });
+      handleVerifyDocument(autoFillDoc);
+      setActiveTab('habilitar');
+    }
   };
 
   // Registro Completo de Usuario
@@ -735,26 +740,67 @@ export default function AdminUsersPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-2.5">
-                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                <div>
-                                  <span className="font-bold block text-amber-950">Documento no registrado en el sistema</span>
-                                  <span className="text-[11px] text-amber-800">
-                                    No se encontró ningún usuario con este documento. Usa la pestaña "Registro Completo" para crearlo.
-                                  </span>
+                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs space-y-2.5">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-2.5">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                  <div>
+                                    <span className="font-bold block text-amber-950">Documento no registrado en el sistema</span>
+                                    <span className="text-[11px] text-amber-800">
+                                      No se encontró ningún usuario con este documento exacto.
+                                    </span>
+                                  </div>
                                 </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, documentNumber: enableForm.documentNumber });
+                                    setActiveTab('registrar');
+                                  }}
+                                  className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] shrink-0 cursor-pointer shadow-sm"
+                                >
+                                  Registrar
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setFormData({ ...formData, documentNumber: enableForm.documentNumber });
-                                  setActiveTab('registrar');
-                                }}
-                                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] shrink-0 cursor-pointer shadow-sm"
-                              >
-                                Registrar
-                              </button>
+
+                              {/* Sugerencias de cuentas similares en el directorio */}
+                              {(() => {
+                                const cleanInput = enableForm.documentNumber.trim();
+                                const suggestions = users.filter(
+                                  (u) =>
+                                    u.documentNumber.includes(cleanInput) ||
+                                    cleanInput.includes(u.documentNumber) ||
+                                    (u.studentCode && u.studentCode.includes(cleanInput))
+                                ).slice(0, 3);
+
+                                if (suggestions.length === 0) return null;
+
+                                return (
+                                  <div className="pt-2 border-t border-amber-200/80">
+                                    <span className="text-[11px] font-bold text-amber-950 block mb-1">
+                                      💡 ¿Buscabas alguna de estas cuentas? (Haz clic para cargar):
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {suggestions.map((m) => (
+                                        <button
+                                          key={m.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setEnableForm({ documentNumber: m.documentNumber });
+                                            handleVerifyDocument(m.documentNumber);
+                                          }}
+                                          className="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg text-xs font-bold text-amber-950 flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                                        >
+                                          <span>{m.name}</span>
+                                          <span className="font-mono text-[10px] text-amber-800 bg-amber-100 px-1 rounded">
+                                            {m.documentNumber}
+                                          </span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -1133,12 +1179,12 @@ export default function AdminUsersPage() {
                             </div>
 
                             <div className="flex items-center gap-3 text-xs text-slate-500 mt-1.5 flex-wrap">
-                              {/* Document with copy button */}
+                              {/* Document with copy & load button */}
                               <button
                                 type="button"
-                                onClick={() => handleCopy(u.documentNumber, `doc-${u.id}`)}
-                                title="Copiar documento"
-                                className="flex items-center gap-1 font-mono hover:text-slate-800 transition-colors cursor-pointer"
+                                onClick={() => handleCopy(u.documentNumber, `doc-${u.id}`, u.documentNumber)}
+                                title="Copiar y cargar en panel de habilitación"
+                                className="flex items-center gap-1 font-mono hover:text-red-700 hover:bg-red-50 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
                               >
                                 <IdCard className="w-3.5 h-3.5 text-slate-400" />
                                 <span>{u.documentType} {u.documentNumber}</span>

@@ -237,8 +237,27 @@ export class UserManagementService {
     const normalizedDoc = dto.documentNumber.trim();
     const normalizedEmail = dto.email ? dto.email.trim().toLowerCase() : undefined;
 
-    // 1. Buscar si ya existe una cuenta con este número de documento
-    const existingUserByDoc = await this.userRepo.findByDocumentNumber(normalizedDoc);
+    // 1. Buscar si ya existe una cuenta con este número de documento o código estudiantil
+    let existingUserByDoc = await this.userRepo.findByDocumentNumber(normalizedDoc);
+    if (!existingUserByDoc) {
+      existingUserByDoc = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { documentNumber: { equals: normalizedDoc, mode: 'insensitive' } },
+            { studentCode: { equals: normalizedDoc, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          company: {
+            select: {
+              id: true,
+              businessName: true,
+              nit: true,
+            },
+          },
+        },
+      });
+    }
 
     if (existingUserByDoc) {
       // Validar si el correo ingresado pertenece a otro usuario distinto
@@ -340,7 +359,26 @@ export class UserManagementService {
     }
 
     const normalizedDoc = documentNumber.trim();
-    const user = await this.userRepo.findByDocumentNumber(normalizedDoc);
+    let user = await this.userRepo.findByDocumentNumber(normalizedDoc);
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { documentNumber: { equals: normalizedDoc, mode: 'insensitive' } },
+            { studentCode: { equals: normalizedDoc, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          company: {
+            select: {
+              id: true,
+              businessName: true,
+              nit: true,
+            },
+          },
+        },
+      });
+    }
 
     if (!user) {
       throw new ValidationError(
@@ -370,7 +408,29 @@ export class UserManagementService {
    * Consulta el estado de identidad de un usuario por documento y correo para validación previa
    */
   async verifyIdentity(documentNumber: string, email?: string) {
-    const userByDoc = await this.userRepo.findByDocumentNumber(documentNumber.trim());
+    const cleanDoc = documentNumber.trim();
+    let userByDoc = await this.userRepo.findByDocumentNumber(cleanDoc);
+
+    if (!userByDoc) {
+      userByDoc = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { documentNumber: { equals: cleanDoc, mode: 'insensitive' } },
+            { studentCode: { equals: cleanDoc, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          company: {
+            select: {
+              id: true,
+              businessName: true,
+              nit: true,
+            },
+          },
+        },
+      });
+    }
+
     let userByEmail = null;
 
     if (email) {
