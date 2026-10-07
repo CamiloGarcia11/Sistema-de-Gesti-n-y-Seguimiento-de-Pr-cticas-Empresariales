@@ -654,11 +654,16 @@ export default function AdminUsersPage() {
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                           Número de Documento / Cédula *
                         </label>
-                        {isVerifyingDoc && (
-                          <span className="text-[10px] text-red-700 font-semibold flex items-center gap-1">
-                            <RefreshCw className="w-3 h-3 animate-spin" /> Buscando...
+                        <div className="flex items-center gap-2">
+                          {isVerifyingDoc && (
+                            <span className="text-[10px] text-red-700 font-semibold flex items-center gap-1">
+                              <RefreshCw className="w-3 h-3 animate-spin" /> Buscando...
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono font-semibold text-slate-400">
+                            {enableForm.documentNumber.length}/15
                           </span>
-                        )}
+                        </div>
                       </div>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -667,14 +672,16 @@ export default function AdminUsersPage() {
                         <input
                           type="text"
                           required
+                          minLength={5}
+                          maxLength={15}
                           value={enableForm.documentNumber}
                           onChange={(e) => {
-                            const val = e.target.value;
+                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
                             setEnableForm({ documentNumber: val });
                             handleVerifyDocument(val);
                           }}
                           placeholder="Ej. 1090123456"
-                          className="w-full pl-10 pr-10 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
+                          className="w-full pl-10 pr-10 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 font-bold font-mono placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                         />
                         {enableForm.documentNumber && (
                           <button
@@ -693,6 +700,9 @@ export default function AdminUsersPage() {
                           </button>
                         )}
                       </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Límite legal: Mínimo 5 y máximo 15 caracteres (sin puntos ni espacios).
+                      </p>
 
                       {/* Tarjeta de Información y Estado del Usuario Encontrado */}
                       {docVerificationResult && (
@@ -923,16 +933,26 @@ export default function AdminUsersPage() {
                       </div>
 
                       <div className="col-span-2">
-                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                          Número Documento *
-                        </label>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Número Documento *
+                          </label>
+                          <span className="text-[10px] font-mono font-semibold text-slate-400">
+                            {formData.documentNumber.length}/15
+                          </span>
+                        </div>
                         <input
                           type="text"
                           required
+                          minLength={5}
+                          maxLength={15}
                           value={formData.documentNumber}
-                          onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+                            setFormData({ ...formData, documentNumber: val });
+                          }}
                           placeholder="Ej. 1090123456"
-                          className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all shadow-sm ${
+                          className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm text-slate-900 font-bold font-mono placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all shadow-sm ${
                             formError?.field === 'documentNumber' ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300'
                           }`}
                         />

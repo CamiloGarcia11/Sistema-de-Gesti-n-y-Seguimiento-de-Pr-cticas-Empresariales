@@ -18,7 +18,9 @@ import { ApiResponse } from '@/types';
 const disableUserSchema = z.object({
   documentNumber: z
     .string({ required_error: 'El número de documento es obligatorio' })
-    .min(4, 'El documento debe tener al menos 4 caracteres'),
+    .min(5, 'El documento debe tener al menos 5 caracteres')
+    .max(15, 'El documento no puede superar 15 caracteres')
+    .regex(/^[A-Za-z0-9]+$/, 'El documento solo puede contener números o letras sin espacios ni caracteres especiales'),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {

@@ -32,6 +32,27 @@ export class ValidationError extends Error {
   }
 }
 
+export function validateLegalDocumentNumber(doc: string): string {
+  const normalized = doc.trim().toUpperCase();
+  if (normalized.length < 5 || normalized.length > 15) {
+    throw new ValidationError(
+      'El número de documento debe tener entre 5 y 15 caracteres (límite legal para documentos de identidad).',
+      'INVALID_DOCUMENT_LENGTH',
+      422,
+      'documentNumber'
+    );
+  }
+  if (!/^[A-Z0-9]+$/.test(normalized)) {
+    throw new ValidationError(
+      'El documento de identidad solo puede contener números y letras válidas sin caracteres especiales ni espacios.',
+      'INVALID_DOCUMENT_FORMAT',
+      422,
+      'documentNumber'
+    );
+  }
+  return normalized;
+}
+
 export class UserManagementService {
   constructor(private userRepo: UserRepository = userRepository) {}
 
@@ -53,7 +74,7 @@ export class UserManagementService {
     }
 
     const normalizedEmail = dto.email.trim().toLowerCase();
-    const normalizedDoc = dto.documentNumber.trim();
+    const normalizedDoc = validateLegalDocumentNumber(dto.documentNumber);
 
     // 2. Criterio 1 (PU): Validar que el correo no esté registrado previamente
     const existingUserByEmail = await this.userRepo.findByEmail(normalizedEmail);
@@ -234,7 +255,7 @@ export class UserManagementService {
       );
     }
 
-    const normalizedDoc = dto.documentNumber.trim();
+    const normalizedDoc = validateLegalDocumentNumber(dto.documentNumber);
     const normalizedEmail = dto.email ? dto.email.trim().toLowerCase() : undefined;
 
     // 1. Buscar si ya existe una cuenta con este número de documento o código estudiantil
@@ -358,7 +379,7 @@ export class UserManagementService {
       );
     }
 
-    const normalizedDoc = documentNumber.trim();
+    const normalizedDoc = validateLegalDocumentNumber(documentNumber);
     let user = await this.userRepo.findByDocumentNumber(normalizedDoc);
     if (!user) {
       user = await prisma.user.findFirst({

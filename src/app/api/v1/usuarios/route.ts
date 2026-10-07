@@ -31,7 +31,9 @@ const createUserSchema = z.object({
   documentType: z.string().default('CC'),
   documentNumber: z
     .string({ required_error: 'El número de documento es obligatorio' })
-    .min(4, 'El documento debe tener al menos 4 caracteres'),
+    .min(5, 'El documento debe tener al menos 5 caracteres')
+    .max(15, 'El documento no puede superar 15 caracteres')
+    .regex(/^[A-Za-z0-9]+$/, 'El documento solo puede contener números o letras sin espacios ni caracteres especiales'),
   phone: z.string().optional(),
   role: z.enum([
     'DIRECTOR_PROGRAMA',
