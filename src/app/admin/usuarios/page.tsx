@@ -26,7 +26,6 @@ import {
   ShieldAlert,
   Copy,
   CheckCheck,
-  Sparkles,
   Phone,
   IdCard,
   ArrowLeft,
@@ -631,7 +630,7 @@ export default function AdminUsersPage() {
                         )}
                       </div>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                           <IdCard className="w-4 h-4" />
                         </div>
                         <input
@@ -643,7 +642,7 @@ export default function AdminUsersPage() {
                             handleVerifyDocument(e.target.value);
                           }}
                           placeholder="Ej. 1090123456"
-                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                          className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                         />
                       </div>
 
@@ -653,17 +652,17 @@ export default function AdminUsersPage() {
                           {docVerificationResult.exists ? (
                             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-center justify-between">
                               <div>
-                                <span className="font-bold block">{docVerificationResult.user?.name}</span>
-                                <span className="text-[11px] opacity-80">Estado actual: <strong>{docVerificationResult.user?.status}</strong></span>
+                                <span className="font-bold block text-slate-900">{docVerificationResult.user?.name}</span>
+                                <span className="text-[11px] text-slate-700">Estado actual: <strong className="text-slate-900">{docVerificationResult.user?.status}</strong></span>
                               </div>
-                              <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 rounded text-[10px] font-bold uppercase">
+                              <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 rounded text-[10px] font-bold uppercase text-amber-900">
                                 Encontrado
                               </span>
                             </div>
                           ) : (
                             <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-[11px] flex items-center gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                              <span>Documento no registrado en el sistema.</span>
+                              <span className="font-semibold">Documento no registrado en el sistema.</span>
                             </div>
                           )}
                         </div>
@@ -675,7 +674,7 @@ export default function AdminUsersPage() {
                       <button
                         type="submit"
                         disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
-                        className="flex-1 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                        className="flex-1 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed"
                       >
                         {enableSubmitting ? (
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -691,7 +690,7 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={handleDisableByDocument}
                         disabled={enableSubmitting || disableSubmitting || !enableForm.documentNumber.trim()}
-                        className="flex-1 py-3.5 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-red-700 border-2 border-red-700 font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex-1 py-3.5 px-4 bg-white hover:bg-red-50 active:bg-red-100 text-red-700 border-2 border-red-700 hover:border-red-800 font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:border-slate-200 disabled:text-slate-400 disabled:bg-slate-50 disabled:cursor-not-allowed"
                       >
                         {disableSubmitting ? (
                           <div className="w-5 h-5 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
@@ -748,7 +747,7 @@ export default function AdminUsersPage() {
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="Ej. Ing. Carlos Pérez"
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                       />
                     </div>
 
@@ -760,7 +759,7 @@ export default function AdminUsersPage() {
                         <select
                           value={formData.documentType}
                           onChange={(e) => setFormData({ ...formData, documentType: e.target.value })}
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                          className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                         >
                           <option value="CC">CC</option>
                           <option value="TI">TI</option>
@@ -779,8 +778,8 @@ export default function AdminUsersPage() {
                           value={formData.documentNumber}
                           onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
                           placeholder="Ej. 1090123456"
-                          className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium ${
-                            formError?.field === 'documentNumber' ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-200'
+                          className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all shadow-sm ${
+                            formError?.field === 'documentNumber' ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300'
                           }`}
                         />
                       </div>
@@ -791,7 +790,7 @@ export default function AdminUsersPage() {
                         Correo Institucional *
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                           <Mail className="w-4 h-4" />
                         </div>
                         <input
@@ -800,8 +799,8 @@ export default function AdminUsersPage() {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder="usuario@ufps.edu.co"
-                          className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium ${
-                            formError?.field === 'email' ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-200'
+                          className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all shadow-sm ${
+                            formError?.field === 'email' ? 'border-red-500 bg-red-50 text-red-900' : 'border-slate-300'
                           }`}
                         />
                       </div>
@@ -812,7 +811,7 @@ export default function AdminUsersPage() {
                         Contraseña Inicial *
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                           <Lock className="w-4 h-4" />
                         </div>
                         <input
@@ -822,7 +821,7 @@ export default function AdminUsersPage() {
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                           placeholder="Mínimo 6 caracteres"
-                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all shadow-sm"
                         />
                       </div>
                     </div>
@@ -834,7 +833,7 @@ export default function AdminUsersPage() {
                       <select
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all cursor-pointer"
+                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all cursor-pointer shadow-sm"
                       >
                         <option value="ESTUDIANTE">ESTUDIANTE (Practicante)</option>
                         <option value="DOCENTE_PRACTICA">DOCENTE_PRACTICA (Supervisor)</option>
@@ -860,7 +859,7 @@ export default function AdminUsersPage() {
                             value={formData.studentCode}
                             onChange={(e) => setFormData({ ...formData, studentCode: e.target.value })}
                             placeholder="Ej. 1152001"
-                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                            className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-sm"
                           />
                         </div>
 
@@ -877,7 +876,7 @@ export default function AdminUsersPage() {
                               value={formData.academicAverage}
                               onChange={(e) => setFormData({ ...formData, academicAverage: e.target.value })}
                               placeholder="Ej. 4.25 (0.0 a 5.0)"
-                              className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-sm"
                             />
                           </div>
 
@@ -892,7 +891,7 @@ export default function AdminUsersPage() {
                               value={formData.approvedCredits}
                               onChange={(e) => setFormData({ ...formData, approvedCredits: e.target.value })}
                               placeholder="Ej. 130 créditos"
-                              className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-red-600 transition-all shadow-sm"
                             />
                           </div>
                         </div>
@@ -902,7 +901,7 @@ export default function AdminUsersPage() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full mt-2 py-3 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      className="w-full mt-2 py-3.5 px-4 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                     >
                       {isSubmitting ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -927,7 +926,7 @@ export default function AdminUsersPage() {
             {/* Filter & Search Bar */}
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Search className="w-4 h-4" />
                 </div>
                 <input
@@ -935,7 +934,7 @@ export default function AdminUsersPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar por documento, nombre o correo..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 transition-all font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                 />
               </div>
 
@@ -943,7 +942,7 @@ export default function AdminUsersPage() {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 cursor-pointer"
+                  className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 cursor-pointer shadow-sm"
                 >
                   <option value="">Todos los Roles</option>
                   <option value="ADMIN">Admin</option>
@@ -956,7 +955,7 @@ export default function AdminUsersPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 cursor-pointer"
+                  className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 cursor-pointer shadow-sm"
                 >
                   <option value="">Todos los Estados</option>
                   <option value="ACTIVO">Habilitados</option>

@@ -148,6 +148,77 @@ export class ApplicationRepository {
       };
     });
   }
+
+  /**
+   * Obtiene postulaciones con filtros por empresa, vacante o estado
+   */
+  async findMany(params: {
+    companyId?: string;
+    vacancyId?: string;
+    studentId?: string;
+    status?: string;
+    skip?: number;
+    take?: number;
+  }) {
+    const where: Prisma.ApplicationWhereInput = {
+      deletedAt: null,
+      ...(params.studentId ? { studentId: params.studentId } : {}),
+      ...(params.vacancyId ? { vacancyId: params.vacancyId } : {}),
+      ...(params.status ? { status: params.status as any } : {}),
+      ...(params.companyId
+        ? {
+            vacancy: {
+              companyId: params.companyId,
+            },
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      prisma.application.findMany({
+        where,
+        skip: params.skip,
+        take: params.take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              documentType: true,
+              documentNumber: true,
+              phone: true,
+              studentCode: true,
+              academicAverage: true,
+              approvedCredits: true,
+              program: true,
+            },
+          },
+          vacancy: {
+            include: {
+              company: {
+                select: {
+                  id: true,
+                  businessName: true,
+                  city: true,
+                },
+              },
+            },
+          },
+          practice: {
+            select: {
+              id: true,
+              currentStatus: true,
+            },
+          },
+        },
+      }),
+      prisma.application.count({ where }),
+    ]);
+
+    return { items, total };
+  }
 }
 
 export const applicationRepository = new ApplicationRepository();

@@ -22,10 +22,10 @@ async function main() {
   await prisma.agreement.deleteMany();
   await prisma.user.deleteMany();
   await prisma.company.deleteMany();
-  await prisma.StudyPlan.deleteMany();
+  await prisma.studyPlan.deleteMany();
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
-    await prisma.StudyPlan.create({
+  await prisma.studyPlan.create({
     data: {
       program: 'Ingeniería de Sistemas',
       name: 'Plan de Estudios Ingeniería de Sistemas',

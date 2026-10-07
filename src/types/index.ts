@@ -140,6 +140,12 @@ export interface UserResponseDTO {
     businessName: string;
     nit: string;
   } | null;
+  activePractice?: {
+    id: string;
+    currentStatus: PracticeStatus;
+    companyName?: string | null;
+    vacancyTitle?: string | null;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }

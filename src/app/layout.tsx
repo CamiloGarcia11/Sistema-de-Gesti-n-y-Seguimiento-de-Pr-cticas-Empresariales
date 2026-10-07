@@ -4,6 +4,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SIGETRAP | Sistema de Gestión de Prácticas Empresariales',
   description: 'Sistema Web para la Gestión, Trazabilidad y Seguimiento de Prácticas Empresariales del Programa de Ingeniería de Sistemas',
+  icons: {
+    icon: '/ufps-logo.png',
+    shortcut: '/ufps-logo.png',
+    apple: '/ufps-logo.png',
+  },
 };
 
 export default function RootLayout({

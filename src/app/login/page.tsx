@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Lock,
   Mail,
@@ -13,7 +14,7 @@ import {
   ShieldCheck,
   GraduationCap,
   ArrowRight,
-  Sparkles,
+  Users,
   Building2,
   FileCheck2,
   Check,
@@ -145,8 +146,15 @@ export default function LoginPage() {
             <div className="relative z-10">
               {/* Header Logo */}
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-white text-red-800 flex items-center justify-center font-black text-2xl shadow-xl shadow-black/20">
-                  S
+                <div className="w-12 h-12 flex items-center justify-center shrink-0">
+                  <Image
+                    src="/ufps-logo.png"
+                    alt="Logo UFPS"
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                    priority
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -164,7 +172,7 @@ export default function LoginPage() {
               {/* Tagline */}
               <div className="mt-12 space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-red-100 font-semibold">
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-red-200" />
                   <span>Plataforma Oficial de Prácticas Empresariales</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
@@ -251,7 +259,7 @@ export default function LoginPage() {
                     Correo Institucional
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                       <Mail className="w-4 h-4" />
                     </div>
                     <input
@@ -260,7 +268,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="usuario@ufps.edu.co"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all font-medium"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                     />
                   </div>
                 </div>
@@ -273,7 +281,7 @@ export default function LoginPage() {
                     </label>
                   </div>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
@@ -282,7 +290,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all font-medium"
+                      className="w-full pl-10 pr-11 py-3 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-bold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:bg-white focus:ring-2 focus:ring-red-600 focus:border-red-600 transition-all shadow-sm"
                     />
                     <button
                       type="button"
@@ -300,7 +308,7 @@ export default function LoginPage() {
 
                 {/* Remember & Options */}
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-semibold">
                     <input
                       type="checkbox"
                       checked={rememberMe}
@@ -315,7 +323,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full mt-2 py-3.5 px-6 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl hover:shadow-red-700/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  className="w-full mt-2 py-3.5 px-6 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -332,7 +340,7 @@ export default function LoginPage() {
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5 text-red-600" />
+                    <Users className="w-3.5 h-3.5 text-red-600" />
                     <span>Probar con Cuentas Demo</span>
                   </div>
                   <span className="text-[11px] text-slate-400 font-medium">Autocompletar en 1 clic</span>

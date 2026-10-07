@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Lock,
   Briefcase,
+  GraduationCap,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -30,6 +31,7 @@ export default function HomePage() {
   }, []);
 
   const isAdmin = currentUser?.role === 'ADMIN';
+  const isFaculty = currentUser?.role === 'DOCENTE_PRACTICA' || currentUser?.role === 'DIRECTOR_PROGRAMA';
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans">
@@ -62,13 +64,27 @@ export default function HomePage() {
             <div className="mt-8 flex flex-wrap gap-4 items-center">
               {currentUser ? (
                 <div className="flex flex-wrap gap-3 items-center">
+                  {(isFaculty || isAdmin) && (
+                    <Link
+                      href="/estudiantes"
+                      className="flex items-center gap-2 px-5 py-3.5 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all cursor-pointer"
+                    >
+                      <GraduationCap className="w-4 h-4" />
+                      <span>Directorio de Estudiantes</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
                   <Link
                     href="/vacantes"
-                    className="flex items-center gap-2 px-5 py-3.5 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all cursor-pointer"
+                    className={`flex items-center gap-2 px-5 py-3.5 ${
+                      isFaculty || isAdmin
+                        ? 'bg-white border border-slate-300 hover:bg-slate-50 text-slate-700'
+                        : 'bg-red-700 hover:bg-red-800 active:bg-red-900 text-white shadow-lg shadow-red-700/20 hover:shadow-xl'
+                    } font-bold text-sm rounded-xl transition-all cursor-pointer`}
                   >
                     <Briefcase className="w-4 h-4" />
-                    <span>Convocatorias y Vacantes</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{currentUser.role === 'TUTOR_EMPRESARIAL' ? 'Convocatorias' : 'Convocatorias y Vacantes'}</span>
+                    {!isFaculty && !isAdmin && <ArrowRight className="w-4 h-4" />}
                   </Link>
                   <Link
                     href="/empresas"
@@ -94,19 +110,12 @@ export default function HomePage() {
               ) : (
                 <div className="flex flex-wrap gap-3 items-center">
                   <Link
-                    href="/vacantes"
-                    className="flex items-center gap-2 px-6 py-3.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-700/20 hover:shadow-xl transition-all cursor-pointer"
-                  >
-                    <Briefcase className="w-4 h-4" />
-                    <span>Ver Vacantes Ofertadas</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
                     href="/login"
-                    className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer"
                   >
                     <Lock className="w-4 h-4" />
-                    <span>Iniciar Sesión</span>
+                    <span>Iniciar Sesión en el Portal</span>
+                    <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               )}
@@ -116,7 +125,7 @@ export default function HomePage() {
 
         {/* Feature Cards Grid (Clean, human-readable modules) */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: If admin, points to user administration; otherwise general security overview */}
+          {/* Card 1: If admin, points to user administration; if faculty, points to students directory; otherwise general security overview */}
           {isAdmin ? (
             <div className="bg-white p-7 rounded-3xl border border-slate-200/80 shadow-md hover:border-red-300 transition-all group">
               <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
@@ -134,6 +143,23 @@ export default function HomePage() {
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+          ) : isFaculty ? (
+            <div className="bg-white p-7 rounded-3xl border border-slate-200/80 shadow-md hover:border-red-300 transition-all group">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mb-2">Directorio de Estudiantes</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Supervisión académica de estudiantes, verificación de elegibilidad (créditos y promedio RN-02) y trazabilidad de prácticas en curso.
+              </p>
+              <Link
+                href="/estudiantes"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+              >
+                <span>Ver Directorio de Estudiantes</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           ) : (
             <div className="bg-white p-7 rounded-3xl border border-slate-200/80 shadow-md hover:border-red-300 transition-all group">
               <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
@@ -141,8 +167,22 @@ export default function HomePage() {
               </div>
               <h3 className="text-base font-bold text-slate-900 mb-2">Seguridad & Autenticación</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Acceso seguro mediante correo institucional, validación unívoca de credenciales y control de permisos por roles académicos y empresariales.
+                Acceso seguro institucional con cifrado de credenciales, tokens de seguridad y control de permisos basado en roles (RBAC).
               </p>
+              {!currentUser ? (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+                >
+                  <span>Acceder con mi cuenta</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 mt-4">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Sesión activa protegida</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -151,35 +191,75 @@ export default function HomePage() {
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
               <Briefcase className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Convocatorias & Vacantes de Práctica</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-2">
+              {currentUser?.role === 'TUTOR_EMPRESARIAL'
+                ? 'Convocatorias Empresariales'
+                : 'Convocatorias & Vacantes de Práctica'}
+            </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Postulación a vacantes empresariales ofertadas con convenio vigente, adjuntando hoja de vida y verificando elegibilidad académica en tiempo real.
+              {currentUser?.role === 'TUTOR_EMPRESARIAL'
+                ? 'Publicación de convocatorias para captación de practicantes idóneos vinculados a programas y periodos específicos.'
+                : 'Postulación a vacantes empresariales ofertadas con convenio vigente, adjuntando hoja de vida y verificando elegibilidad académica.'}
             </p>
-            <Link
-              href="/vacantes"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
-            >
-              <span>Ver Vacantes Disponibles</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {currentUser ? (
+              <Link
+                href="/vacantes"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+              >
+                <span>
+                  {currentUser.role === 'TUTOR_EMPRESARIAL'
+                    ? 'Gestionar Convocatorias'
+                    : 'Ver Vacantes Disponibles'}
+                </span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+              >
+                <span>Iniciar sesión para ver vacantes</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
 
-          {/* Card 3 */}
+          {/* Card 3: Registro y Radicación de Empresas */}
           <div className="bg-white p-7 rounded-3xl border border-slate-200/80 shadow-md hover:border-red-300 transition-all group">
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mb-4 group-hover:bg-red-700 group-hover:text-white transition-all">
               <Building2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Registro y Radicación de Empresas</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-2">
+              {currentUser?.role === 'ESTUDIANTE'
+                ? 'Directorio de Empresas Receptoras'
+                : 'Registro y Radicación de Empresas'}
+            </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Radicación de datos fiscales de empresas receptoras, validación de NIT y habilitación formal para convenios institucionales.
+              {currentUser?.role === 'ESTUDIANTE'
+                ? 'Consulta el catálogo de empresas receptoras vinculadas y el estado de sus convenios institucionales vigentes.'
+                : 'Radicación de datos fiscales de empresas receptoras, validación de NIT y habilitación formal para convenios institucionales.'}
             </p>
-            <Link
-              href="/empresas"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
-            >
-              <span>Ir a Radicación de Empresas</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {currentUser ? (
+              <Link
+                href="/empresas"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+              >
+                <span>
+                  {currentUser.role === 'ESTUDIANTE'
+                    ? 'Consultar Directorio de Empresas'
+                    : 'Ir a Radicación de Empresas'}
+                </span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 mt-4 group-hover:translate-x-0.5 transition-transform"
+              >
+                <span>Iniciar sesión para ver empresas</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
         </section>
       </main>

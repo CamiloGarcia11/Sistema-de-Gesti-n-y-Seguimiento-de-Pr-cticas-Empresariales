@@ -367,7 +367,11 @@ export class UserManagementService {
    * Lista usuarios con filtros y paginación
    */
   async listUsers(filter: UserFilterDTO, actor: AuthenticatedUser) {
-    if (actor.role !== 'ADMIN' && actor.role !== 'DIRECTOR_PROGRAMA') {
+    if (
+      actor.role !== 'ADMIN' &&
+      actor.role !== 'DIRECTOR_PROGRAMA' &&
+      actor.role !== 'DOCENTE_PRACTICA'
+    ) {
       throw new ValidationError(
         'No tiene autorización para listar el directorio de usuarios',
         'FORBIDDEN',
@@ -399,6 +403,8 @@ export class UserManagementService {
   }
 
   private mapToResponseDTO(user: any): UserResponseDTO {
+    const latestPractice = user.practicesAsStudent && user.practicesAsStudent.length > 0 ? user.practicesAsStudent[0] : null;
+
     return {
       id: user.id,
       email: user.email,
@@ -419,6 +425,14 @@ export class UserManagementService {
             id: user.company.id,
             businessName: user.company.businessName,
             nit: user.company.nit,
+          }
+        : null,
+      activePractice: latestPractice
+        ? {
+            id: latestPractice.id,
+            currentStatus: latestPractice.currentStatus,
+            companyName: latestPractice.company?.businessName || null,
+            vacancyTitle: latestPractice.vacancy?.title || null,
           }
         : null,
       createdAt: user.createdAt,

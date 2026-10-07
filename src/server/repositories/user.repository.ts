@@ -200,6 +200,26 @@ export class UserRepository {
               nit: true,
             },
           },
+          practicesAsStudent: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: {
+              company: {
+                select: {
+                  id: true,
+                  businessName: true,
+                  city: true,
+                },
+              },
+              vacancy: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+            },
+          },
         },
       }),
       prisma.user.count({ where }),

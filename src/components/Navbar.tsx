@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2 } from 'lucide-react';
+import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2, GraduationCap } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -46,6 +47,12 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
     }
   };
 
+  const canViewStudents =
+    currentUser?.role === 'DOCENTE_PRACTICA' ||
+    currentUser?.role === 'DIRECTOR_PROGRAMA' ||
+    currentUser?.role === 'TUTOR_EMPRESARIAL' ||
+    currentUser?.role === 'ADMIN';
+
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
       {/* Top red institutional bar */}
@@ -55,8 +62,15 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
         <div className="flex justify-between items-center h-16">
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-red-700 text-white flex items-center justify-center font-bold text-xl shadow-md group-hover:bg-red-800 transition-colors">
-              S
+            <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+              <Image
+                src="/ufps-logo.png"
+                alt="Logo UFPS"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -71,41 +85,56 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
             </div>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              href="/vacantes"
-              className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Vacantes</span>
-            </Link>
-            <Link
-              href="/empresas"
-              className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Empresas</span>
-            </Link>
-            {currentUser?.role === 'ESTUDIANTE' && (
+          {/* Navigation Links - Solo visibles cuando hay una sesión activa */}
+          {currentUser && (
+            <nav className="hidden md:flex items-center gap-1">
+              {canViewStudents && (
+                <Link
+                  href="/estudiantes"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>{currentUser.role === 'TUTOR_EMPRESARIAL' ? 'Practicantes' : 'Estudiantes'}</span>
+                </Link>
+              )}
+
               <Link
-                href="/estudiante/dictamen"
+                href="/vacantes"
                 className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Mi dictamen</span>
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>{currentUser.role === 'TUTOR_EMPRESARIAL' ? 'Convocatorias' : 'Vacantes'}</span>
               </Link>
-            )}
-            {currentUser?.role === 'ADMIN' && (
+
               <Link
-                href="/admin/usuarios"
+                href="/empresas"
                 className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Usuarios</span>
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Empresas</span>
               </Link>
-            )}
-          </nav>
+
+              {currentUser.role === 'ESTUDIANTE' && (
+                <Link
+                  href="/estudiante/dictamen"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Mi dictamen</span>
+                </Link>
+              )}
+
+              {currentUser.role === 'ADMIN' && (
+                <Link
+                  href="/admin/usuarios"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Usuarios</span>
+                </Link>
+              )}
+            </nav>
+          )}
 
           {/* User Profile */}
           <div className="flex items-center gap-4">

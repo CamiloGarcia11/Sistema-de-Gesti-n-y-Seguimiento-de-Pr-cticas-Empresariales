@@ -23,7 +23,6 @@ import {
   Info,
   Briefcase,
   Layers,
-  Sparkles,
   ChevronRight,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -231,6 +230,19 @@ export default function EmpresasPage() {
     setTimeout(() => setCopiedNit(null), 2000);
   };
 
+  const isStudent = currentUser?.role === 'ESTUDIANTE';
+  const canRegisterCompany =
+    currentUser?.role === 'ADMIN' ||
+    currentUser?.role === 'DIRECTOR_PROGRAMA' ||
+    currentUser?.role === 'DOCENTE_PRACTICA' ||
+    currentUser?.role === 'TUTOR_EMPRESARIAL';
+
+  useEffect(() => {
+    if (isStudent && activeTab === 'radicar') {
+      setActiveTab('directorio');
+    }
+  }, [isStudent, activeTab]);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar currentUser={currentUser} />
@@ -243,41 +255,45 @@ export default function EmpresasPage() {
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-bold uppercase tracking-wider">
                 <Building2 className="w-3.5 h-3.5" />
-                <span>Módulo de Registro Empresarial</span>
+                <span>{isStudent ? 'Directorio de Entidades Empleadoras' : 'Módulo de Registro Empresarial'}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Radicación de Datos Fiscales de la Empresa Receptora
+                {isStudent ? 'Directorio de Empresas con Convenio Institucional' : 'Radicación de Datos Fiscales de la Empresa Receptora'}
               </h1>
               <p className="text-sm text-slate-600 max-w-3xl">
-                Registro y validación de datos tributarios (NIT, razón social, representante legal y contacto) para la habilitación formal de empresas en el flujo de convenios institucionales.
+                {isStudent
+                  ? 'Consulta el catálogo de empresas receptoras vinculadas y el estado de sus convenios institucionales para la realización de prácticas profesionales.'
+                  : 'Registro y validación de datos tributarios (NIT, razón social, representante legal y contacto) para la habilitación formal de empresas en el flujo de convenios institucionales.'}
               </p>
             </div>
 
             {/* Selector de pestañas */}
-            <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-start md:self-center">
-              <button
-                onClick={() => setActiveTab('radicar')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'radicar'
-                    ? 'bg-red-700 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Radicar Empresa</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('directorio')}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'directorio'
-                    ? 'bg-red-700 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                <span>Directorio ({companies.length})</span>
-              </button>
-            </div>
+            {canRegisterCompany && (
+              <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-start md:self-center">
+                <button
+                  onClick={() => setActiveTab('radicar')}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'radicar'
+                      ? 'bg-red-700 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Radicar Empresa</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('directorio')}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'directorio'
+                      ? 'bg-red-700 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>Directorio ({companies.length})</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

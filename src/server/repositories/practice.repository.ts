@@ -214,6 +214,105 @@ export class PracticeRepository {
       data: updateData,
     });
   }
+
+  /**
+   * Consulta paginada y filtrada de prácticas para docentes, directores y tutores
+   */
+  async findMany(params: {
+    teacherId?: string;
+    tutorId?: string;
+    companyId?: string;
+    studentId?: string;
+    status?: PracticeStatus;
+    search?: string;
+    skip?: number;
+    take?: number;
+  }) {
+    const where: Prisma.PracticeWhereInput = {
+      deletedAt: null,
+      ...(params.teacherId ? { teacherId: params.teacherId } : {}),
+      ...(params.tutorId ? { tutorId: params.tutorId } : {}),
+      ...(params.companyId ? { companyId: params.companyId } : {}),
+      ...(params.studentId ? { studentId: params.studentId } : {}),
+      ...(params.status ? { currentStatus: params.status } : {}),
+    };
+
+    if (params.search) {
+      const search = params.search.trim();
+      where.OR = [
+        { student: { name: { contains: search, mode: 'insensitive' } } },
+        { student: { studentCode: { contains: search, mode: 'insensitive' } } },
+        { student: { documentNumber: { contains: search, mode: 'insensitive' } } },
+        { company: { businessName: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.practice.findMany({
+        where,
+        skip: params.skip,
+        take: params.take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              studentCode: true,
+              documentNumber: true,
+              documentType: true,
+              phone: true,
+              program: true,
+              academicAverage: true,
+              approvedCredits: true,
+              status: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              businessName: true,
+              nit: true,
+              city: true,
+            },
+          },
+          vacancy: {
+            select: {
+              id: true,
+              title: true,
+              academicPeriod: true,
+            },
+          },
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          tutor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          workPlan: {
+            select: {
+              id: true,
+              status: true,
+              tutorApproved: true,
+              teacherApproved: true,
+            },
+          },
+        },
+      }),
+      prisma.practice.count({ where }),
+    ]);
+
+    return { items, total };
+  }
 }
 
 export const practiceRepository = new PracticeRepository();

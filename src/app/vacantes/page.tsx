@@ -17,7 +17,6 @@ import {
   ExternalLink,
   ChevronRight,
   GraduationCap,
-  Sparkles,
   FileCheck2,
   Lock,
   ArrowRight,
@@ -30,6 +29,8 @@ import {
   Layers,
   AlertCircle,
   Check,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import {
   VacancyResponseDTO,
@@ -98,10 +99,36 @@ export default function VacantesPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
+  // Modal de visualización de candidatos / postulados (Tutor empresarial / Admin)
+  const [selectedVacancyForApplicants, setSelectedVacancyForApplicants] = useState<VacancyResponseDTO | null>(null);
+  const [applicantsList, setApplicantsList] = useState<ApplicationResponseDTO[]>([]);
+  const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
+  const [isApplicantsModalOpen, setIsApplicantsModalOpen] = useState(false);
+
   const isEmployerOrAdmin =
     currentUser?.role === 'TUTOR_EMPRESARIAL' ||
     currentUser?.role === 'ADMIN' ||
     currentUser?.role === 'DIRECTOR_PROGRAMA';
+
+  const handleOpenApplicantsModal = async (vacancy: VacancyResponseDTO) => {
+    setSelectedVacancyForApplicants(vacancy);
+    setIsApplicantsModalOpen(true);
+    setIsLoadingApplicants(true);
+    try {
+      const res = await fetch(`/api/v1/postulaciones?vacancyId=${vacancy.id}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setApplicantsList(data.data.items || []);
+      } else {
+        setApplicantsList([]);
+      }
+    } catch (e) {
+      console.error('Error cargando candidatos:', e);
+      setApplicantsList([]);
+    } finally {
+      setIsLoadingApplicants(false);
+    }
+  };
 
   // Cargar usuario autenticado
   useEffect(() => {
@@ -770,8 +797,9 @@ export default function VacantesPage() {
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            Solo estudiantes elegibles
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold">
+                            <Check className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Convocatoria Abierta</span>
                           </span>
                         )}
                       </div>
@@ -975,11 +1003,14 @@ export default function VacantesPage() {
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                          <button
+                            onClick={() => handleOpenApplicantsModal(vac)}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          >
                             <Users className="w-3.5 h-3.5" />
-                            <span>{vac.applicationsCount} postulaciones</span>
-                          </div>
+                            <span>Ver Candidatos ({vac.applicationsCount})</span>
+                          </button>
 
                           {isDraft && (
                             <button
@@ -1406,6 +1437,125 @@ export default function VacantesPage() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CANDIDATOS Y POSTULACIONES (TUTOR EMPRESARIAL / ADMIN) */}
+      {isApplicantsModalOpen && selectedVacancyForApplicants && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 relative max-h-[90vh] overflow-y-auto">
+            {/* Header del Modal */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-extrabold uppercase mb-1.5">
+                  <Users className="w-3 h-3" />
+                  <span>Preselección de Candidatos</span>
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Candidatos Postulados: {selectedVacancyForApplicants.title}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {selectedVacancyForApplicants.company.businessName} • {selectedVacancyForApplicants.vacanciesCount} cupo(s) ofertados
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsApplicantsModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Listado de Candidatos */}
+            {isLoadingApplicants ? (
+              <div className="py-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-red-700 border-t-transparent" />
+                <p className="mt-2 text-xs font-semibold text-slate-600">Cargando candidatos y hojas de vida...</p>
+              </div>
+            ) : applicantsList.length === 0 ? (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl mx-auto flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">Aún no hay postulaciones registradas</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Los estudiantes elegibles podrán postularse a esta convocatoria una vez publicada.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Total de Postulaciones: {applicantsList.length}</span>
+                  <span className="text-slate-400 text-[11px] font-normal">Ordenadas por fecha reciente</span>
+                </div>
+
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                  {applicantsList.map((app: any) => (
+                    <div key={app.id} className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm text-slate-900">{app.student?.name}</strong>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                            Cód: {app.student?.studentCode || 'N/A'}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5 text-slate-400" />
+                            {app.student?.email}
+                          </span>
+                          {app.student?.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3.5 h-3.5 text-slate-400" />
+                              {app.student?.phone}
+                            </span>
+                          )}
+                          <span className="text-slate-600 font-medium">
+                            Créditos: <strong>{app.student?.approvedCredits ?? 0}</strong> • Promedio: <strong>{app.student?.academicAverage ? app.student.academicAverage.toFixed(2) : 'N/A'}</strong>
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>Fecha de postulación: {new Date(app.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                        {app.cvUrl && (
+                          <a
+                            href={app.cvUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Ver Hoja de Vida</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {app.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsApplicantsModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
