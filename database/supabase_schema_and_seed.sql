@@ -51,7 +51,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE "ApplicationStatus" AS ENUM ('POSTULADO', 'PRESENTADO', 'ACEPTADO', 'RECHAZADO', 'CANCELADO');
+    CREATE TYPE "ApplicationStatus" AS ENUM ('POSTULADO', 'PRESENTADO', 'PENDIENTE', 'EN_REVISION', 'PRESELECCIONADO', 'ACEPTADO', 'RECHAZADO', 'CANCELADO');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -195,19 +195,39 @@ CREATE TABLE IF NOT EXISTS "vacancies" (
     "deleted_at" TIMESTAMPTZ
 );
 
--- Tabla: applications (Postulaciones de estudiantes)
+-- Tabla: applications (Postulaciones de estudiantes - CU12 Preselección y Aceptación de Candidatos)
 CREATE TABLE IF NOT EXISTS "applications" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "vacancy_id" UUID NOT NULL REFERENCES "vacancies"("id") ON DELETE RESTRICT,
-    "student_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "vacancy_id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
     "status" "ApplicationStatus" NOT NULL DEFAULT 'POSTULADO',
     "cv_url" TEXT,
     "presentation_letter_url" TEXT,
     "rejection_reason" TEXT,
+    "updated_by_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "deleted_at" TIMESTAMPTZ
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "fk_postulacion_plaza" FOREIGN KEY ("vacancy_id") REFERENCES "vacancies"("id") ON DELETE RESTRICT,
+    CONSTRAINT "fk_postulacion_estudiante" FOREIGN KEY ("student_id") REFERENCES "users"("id") ON DELETE RESTRICT,
+    CONSTRAINT "chk_estado_postulacion" CHECK ("status"::text IN ('Pendiente', 'En Revisión', 'Preseleccionado', 'Aceptado', 'Rechazado', 'POSTULADO', 'PRESENTADO', 'PENDIENTE', 'EN_REVISION', 'PRESELECCIONADO', 'ACEPTADO', 'RECHAZADO', 'CANCELADO'))
 );
+
+-- Vista conceptual postulaciones para CU12
+CREATE OR REPLACE VIEW "postulaciones" AS
+SELECT
+    "id",
+    "vacancy_id" AS "plaza_id",
+    "student_id" AS "estudiante_id",
+    "status" AS "estado",
+    "cv_url" AS "hoja_de_vida_url",
+    "presentation_letter_url",
+    "rejection_reason" AS "motivo_rechazo",
+    "updated_by_id" AS "usuario_modificacion_id",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion",
+    "deleted_at"
+FROM "applications";
 
 -- Tabla: practices (Ciclo de Vida de Práctica y Máquina de Estados)
 CREATE TABLE IF NOT EXISTS "practices" (

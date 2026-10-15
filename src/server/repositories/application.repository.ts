@@ -219,6 +219,66 @@ export class ApplicationRepository {
 
     return { items, total };
   }
+
+  /**
+   * Cuenta cuántos candidatos han sido admitidos (estado Aceptado) para una vacante específica
+   */
+  async countAcceptedByVacancyId(vacancyId: string): Promise<number> {
+    return prisma.application.count({
+      where: {
+        vacancyId,
+        deletedAt: null,
+        OR: [
+          { status: 'ACEPTADO' },
+          { status: 'Aceptado' as any },
+        ],
+      },
+    });
+  }
+
+  /**
+   * Actualiza el estado de una postulación registrando usuario y fecha de modificación (CU12)
+   */
+  async updateApplicationStatus(params: {
+    applicationId: string;
+    status: string;
+    updatedById: string;
+    rejectionReason?: string | null;
+  }) {
+    // Normalizar a enum si es requerido por la base de datos
+    let enumStatus = params.status;
+    if (params.status === 'Pendiente') enumStatus = 'POSTULADO';
+    if (params.status === 'En Revisión') enumStatus = 'PRESENTADO';
+    if (params.status === 'Preseleccionado') enumStatus = 'PRESENTADO';
+    if (params.status === 'Aceptado') enumStatus = 'ACEPTADO';
+    if (params.status === 'Rechazado') enumStatus = 'RECHAZADO';
+
+    return prisma.application.update({
+      where: { id: params.applicationId },
+      data: {
+        status: enumStatus as any,
+        rejectionReason: params.rejectionReason !== undefined ? params.rejectionReason : undefined,
+        updatedAt: new Date(),
+      },
+      include: {
+        vacancy: {
+          include: {
+            company: true,
+          },
+        },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            studentCode: true,
+            program: true,
+          },
+        },
+        practice: true,
+      },
+    });
+  }
 }
 
 export const applicationRepository = new ApplicationRepository();

@@ -104,6 +104,11 @@ export default function VacantesPage() {
   const [applicantsList, setApplicantsList] = useState<ApplicationResponseDTO[]>([]);
   const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
   const [isApplicantsModalOpen, setIsApplicantsModalOpen] = useState(false);
+  const [updatingApplicantId, setUpdatingApplicantId] = useState<string | null>(null);
+  const [applicantUpdateError, setApplicantUpdateError] = useState<string | null>(null);
+  const [applicantUpdateSuccess, setApplicantUpdateSuccess] = useState<string | null>(null);
+  const [rejectingAppId, setRejectingAppId] = useState<string | null>(null);
+  const [rejectionReasonText, setRejectionReasonText] = useState('');
 
   const isEmployerOrAdmin =
     currentUser?.role === 'TUTOR_EMPRESARIAL' ||
@@ -114,6 +119,9 @@ export default function VacantesPage() {
     setSelectedVacancyForApplicants(vacancy);
     setIsApplicantsModalOpen(true);
     setIsLoadingApplicants(true);
+    setApplicantUpdateError(null);
+    setApplicantUpdateSuccess(null);
+    setRejectingAppId(null);
     try {
       const res = await fetch(`/api/v1/postulaciones?vacancyId=${vacancy.id}`);
       const data = await res.json();
@@ -127,6 +135,53 @@ export default function VacantesPage() {
       setApplicantsList([]);
     } finally {
       setIsLoadingApplicants(false);
+    }
+  };
+
+  const handleUpdateApplicantStatus = async (
+    applicationId: string,
+    newStatus: string,
+    rejectionReason?: string
+  ) => {
+    setUpdatingApplicantId(applicationId);
+    setApplicantUpdateError(null);
+    setApplicantUpdateSuccess(null);
+    try {
+      const res = await fetch(`/api/v1/postulaciones/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: newStatus, rejectionReason }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error?.message || 'Error al actualizar el estado del candidato');
+      }
+
+      setApplicantUpdateSuccess(data.message || `Estado actualizado a '${newStatus}' correctamente`);
+      setApplicantsList((prev) =>
+        prev.map((app) =>
+          app.id === applicationId
+            ? {
+                ...app,
+                status: newStatus as any,
+                updatedAt: new Date(data.data.updatedAt),
+                rejectionReason: data.data.rejectionReason,
+              }
+            : app
+        )
+      );
+
+      if (newStatus === 'Aceptado' || newStatus === 'ACEPTADO') {
+        loadCompanyVacancies();
+        loadVacancies();
+      }
+
+      setRejectingAppId(null);
+      setRejectionReasonText('');
+    } catch (err: any) {
+      setApplicantUpdateError(err.message || 'Error al procesar la actualización');
+    } finally {
+      setUpdatingApplicantId(null);
     }
   };
 
@@ -1441,23 +1496,44 @@ export default function VacantesPage() {
         </div>
       )}
 
-      {/* MODAL DE CANDIDATOS Y POSTULACIONES (TUTOR EMPRESARIAL / ADMIN) */}
+      {/* MODAL DE CANDIDATOS Y POSTULACIONES (TUTOR EMPRESARIAL / ADMIN - CU12) */}
       {isApplicantsModalOpen && selectedVacancyForApplicants && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 relative max-h-[90vh] overflow-y-auto">
             {/* Header del Modal */}
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-extrabold uppercase mb-1.5">
                   <Users className="w-3 h-3" />
-                  <span>Preselección de Candidatos</span>
+                  <span>CU12 • Preselección y Admisión de Candidatos</span>
                 </div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  Candidatos Postulados: {selectedVacancyForApplicants.title}
+                  {selectedVacancyForApplicants.title}
                 </h2>
-                <p className="text-xs text-slate-500">
-                  {selectedVacancyForApplicants.company.businessName} • {selectedVacancyForApplicants.vacanciesCount} cupo(s) ofertados
-                </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
+                  <span>{selectedVacancyForApplicants.company.businessName}</span>
+                  <span>•</span>
+                  <span>Límite de Cupos: <strong>{selectedVacancyForApplicants.vacanciesCount}</strong></span>
+                  <span>•</span>
+                  {(() => {
+                    const acceptedCount = applicantsList.filter(
+                      (a: any) => a.status === 'Aceptado' || a.status === 'ACEPTADO'
+                    ).length;
+                    const maxCapacity = selectedVacancyForApplicants.vacanciesCount;
+                    const isQuotaFull = acceptedCount >= maxCapacity;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${
+                          isQuotaFull
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        {acceptedCount} de {maxCapacity} admitido(s) {isQuotaFull ? '(Cupo Completado)' : ''}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
 
               <button
@@ -1467,6 +1543,39 @@ export default function VacantesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Mensajes de Alerta de Estado */}
+            {applicantUpdateError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-800 text-xs animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <strong className="block font-bold">Bloqueo de Operación:</strong>
+                  <span>{applicantUpdateError}</span>
+                </div>
+                <button
+                  onClick={() => setApplicantUpdateError(null)}
+                  className="text-red-400 hover:text-red-700 font-bold ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {applicantUpdateSuccess && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-emerald-800 text-xs animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <strong className="block font-bold">Operación Exitosa:</strong>
+                  <span>{applicantUpdateSuccess}</span>
+                </div>
+                <button
+                  onClick={() => setApplicantUpdateSuccess(null)}
+                  className="text-emerald-400 hover:text-emerald-700 font-bold ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Listado de Candidatos */}
             {isLoadingApplicants ? (
@@ -1492,58 +1601,205 @@ export default function VacantesPage() {
                 </div>
 
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
-                  {applicantsList.map((app: any) => (
-                    <div key={app.id} className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <strong className="text-sm text-slate-900">{app.student?.name}</strong>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
-                            Cód: {app.student?.studentCode || 'N/A'}
-                          </span>
-                        </div>
+                  {applicantsList.map((app: any) => {
+                    const isAccepted = app.status === 'Aceptado' || app.status === 'ACEPTADO';
+                    const isPreselected = app.status === 'Preseleccionado';
+                    const isInReview = app.status === 'En Revisión' || app.status === 'EN_REVISION';
+                    const isRejected = app.status === 'Rechazado' || app.status === 'RECHAZADO';
+                    const isPending = app.status === 'Pendiente' || app.status === 'POSTULADO';
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            {app.student?.email}
-                          </span>
-                          {app.student?.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3.5 h-3.5 text-slate-400" />
-                              {app.student?.phone}
+                    const currentAcceptedTotal = applicantsList.filter(
+                      (a: any) => a.status === 'Aceptado' || a.status === 'ACEPTADO'
+                    ).length;
+                    const isQuotaFull = currentAcceptedTotal >= selectedVacancyForApplicants.vacanciesCount;
+
+                    return (
+                      <div
+                        key={app.id}
+                        className="p-5 hover:bg-slate-50/60 transition-colors flex flex-col gap-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <strong className="text-sm text-slate-900">{app.student?.name}</strong>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
+                                Cód: {app.student?.studentCode || 'N/A'}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                {app.student?.email}
+                              </span>
+                              {app.student?.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                  {app.student?.phone}
+                                </span>
+                              )}
+                              <span className="text-slate-600 font-medium">
+                                Créditos: <strong>{app.student?.approvedCredits ?? 0}</strong> • Promedio:{' '}
+                                <strong>
+                                  {app.student?.academicAverage
+                                    ? app.student.academicAverage.toFixed(2)
+                                    : 'N/A'}
+                                </strong>
+                              </span>
+                            </div>
+
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>Fecha de postulación: {new Date(app.createdAt).toLocaleDateString()}</span>
+                              {app.updatedAt && (
+                                <span className="ml-2 text-slate-400">
+                                  • Última modificación: {new Date(app.updatedAt).toLocaleTimeString()}
+                                </span>
+                              )}
+                            </div>
+
+                            {app.rejectionReason && (
+                              <p className="text-[11px] text-rose-600 bg-rose-50 px-2 py-1 rounded inline-block">
+                                Motivo de rechazo: {app.rejectionReason}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center shrink-0">
+                            {app.cvUrl && (
+                              <a
+                                href={app.cvUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Ver Hoja de Vida</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+
+                            {/* Badge de Estado Actual */}
+                            <span
+                              className={`px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase border ${
+                                isAccepted
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : isPreselected
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : isInReview
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : isRejected
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {app.status}
                             </span>
-                          )}
-                          <span className="text-slate-600 font-medium">
-                            Créditos: <strong>{app.student?.approvedCredits ?? 0}</strong> • Promedio: <strong>{app.student?.academicAverage ? app.student.academicAverage.toFixed(2) : 'N/A'}</strong>
-                          </span>
+                          </div>
                         </div>
 
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Fecha de postulación: {new Date(app.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
+                        {/* Botones de Acción de Preselección y Admisión (CU12) */}
+                        {isEmployerOrAdmin && (
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              Gestión de Postulación:
+                            </span>
 
-                      <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                        {app.cvUrl && (
-                          <a
-                            href={app.cvUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Ver Hoja de Vida</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Pasar a En Revisión si está en Pendiente */}
+                              {isPending && (
+                                <button
+                                  disabled={updatingApplicantId === app.id}
+                                  onClick={() => handleUpdateApplicantStatus(app.id, 'En Revisión')}
+                                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <span>Iniciar Evaluación</span>
+                                </button>
+                              )}
+
+                              {/* Si está en En Revisión o Preseleccionado: opciones de admisión */}
+                              {(isInReview || isPending) && (
+                                <button
+                                  disabled={updatingApplicantId === app.id}
+                                  onClick={() => handleUpdateApplicantStatus(app.id, 'Preseleccionado')}
+                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <span>Preseleccionar</span>
+                                </button>
+                              )}
+
+                              {/* Formalizar Admisión (Aceptado) */}
+                              {!isAccepted && (
+                                <button
+                                  disabled={updatingApplicantId === app.id}
+                                  onClick={() => handleUpdateApplicantStatus(app.id, 'Aceptado')}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50 shadow-sm ${
+                                    isQuotaFull
+                                      ? 'bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200'
+                                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                  }`}
+                                  title={isQuotaFull ? 'El cupo de vacantes ya ha sido completado' : 'Formalizar admisión del estudiante'}
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Aceptar (Admitir)</span>
+                                </button>
+                              )}
+
+                              {/* Rechazar */}
+                              {!isRejected && (
+                                <button
+                                  disabled={updatingApplicantId === app.id}
+                                  onClick={() => {
+                                    if (rejectingAppId === app.id) {
+                                      setRejectingAppId(null);
+                                    } else {
+                                      setRejectingAppId(app.id);
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  <span>Rechazar</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
 
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
-                          {app.status}
-                        </span>
+                        {/* Formulario Inline de Rechazo */}
+                        {rejectingAppId === app.id && (
+                          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-2 text-xs">
+                            <label className="font-bold text-rose-900 block">
+                              Motivo del Rechazo de la Postulación:
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ej: Perfil no se ajusta a los requerimientos técnicos de la vacante"
+                              value={rejectionReasonText}
+                              onChange={(e) => setRejectionReasonText(e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-rose-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => setRejectingAppId(null)}
+                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                disabled={updatingApplicantId === app.id}
+                                onClick={() =>
+                                  handleUpdateApplicantStatus(app.id, 'Rechazado', rejectionReasonText)
+                                }
+                                className="px-3 py-1 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold"
+                              >
+                                Confirmar Rechazo
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -24,12 +24,31 @@ export type VacancyStatus =
   | 'CUBIERTA'
   | 'CANCELADA';
 
+export type PostulacionEstadoDomain =
+  | 'Pendiente'
+  | 'En Revisión'
+  | 'Preseleccionado'
+  | 'Aceptado'
+  | 'Rechazado';
+
+export const DOMAIN_APPLICATION_STATUSES: readonly PostulacionEstadoDomain[] = [
+  'Pendiente',
+  'En Revisión',
+  'Preseleccionado',
+  'Aceptado',
+  'Rechazado',
+] as const;
+
 export type ApplicationStatus =
   | 'POSTULADO'
   | 'PRESENTADO'
+  | 'PENDIENTE'
+  | 'EN_REVISION'
+  | 'PRESELECCIONADO'
   | 'ACEPTADO'
   | 'RECHAZADO'
-  | 'CANCELADO';
+  | 'CANCELADO'
+  | PostulacionEstadoDomain;
 
 export type PracticeStatus =
   | 'ASPIRANTE'
@@ -376,8 +395,38 @@ export interface ApplicationResponseDTO {
     academicAverage?: number | null;
     approvedCredits?: number | null;
   };
+  updatedById?: string | null;
+  updatedBy?: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface UpdateApplicationStatusDTO {
+  status?: string;
+  estado?: string;
+  notes?: string;
+  rejectionReason?: string;
+}
+
+export interface ApplicationStatusUpdateResultDTO {
+  id: string;
+  vacancyId: string;
+  studentId: string;
+  previousStatus: string;
+  newStatus: string;
+  status: ApplicationStatus;
+  updatedAt: Date;
+  updatedById: string;
+  updatedByName?: string;
+  rejectionReason?: string | null;
+  practiceId?: string | null;
+  practiceStatus?: PracticeStatus | null;
+  message: string;
 }
 
 // ------------------------------------------------------------------------------
