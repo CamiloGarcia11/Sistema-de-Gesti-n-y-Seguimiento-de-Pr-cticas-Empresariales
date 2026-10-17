@@ -47,6 +47,11 @@ export class PracticeRepository {
             name: true,
             email: true,
             phone: true,
+            program: true,
+            documentNumber: true,
+            documentType: true,
+            status: true,
+            isActive: true,
           },
         },
         director: {
@@ -296,6 +301,9 @@ export class PracticeRepository {
               id: true,
               name: true,
               email: true,
+              program: true,
+              documentNumber: true,
+              status: true,
             },
           },
           workPlan: {
@@ -312,6 +320,64 @@ export class PracticeRepository {
     ]);
 
     return { items, total };
+  }
+
+  /**
+   * Asigna un supervisor inmediato (tutor empresarial) como evaluador directo de una práctica (CU09 - Criterio 3)
+   */
+  async assignTutorToPractice(params: {
+    practiceId: string;
+    tutorId: string;
+    teacherId?: string;
+    changedByUserId?: string;
+    notes?: string;
+  }) {
+    return prisma.practice.update({
+      where: { id: params.practiceId },
+      data: {
+        tutorId: params.tutorId,
+        ...(params.teacherId ? { teacherId: params.teacherId } : {}),
+        updatedAt: new Date(),
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            studentCode: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            businessName: true,
+            nit: true,
+            isActive: true,
+          },
+        },
+        tutor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            program: true,
+            documentNumber: true,
+            documentType: true,
+            phone: true,
+            status: true,
+            isActive: true,
+          },
+        },
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
   }
 }
 

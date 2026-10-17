@@ -22,8 +22,11 @@ import {
   IdCard,
   Check,
   Filter,
+  Users,
+  UserPlus,
+  X,
 } from 'lucide-react';
-import { UserResponseDTO, PracticeStatus } from '@/types';
+import { UserResponseDTO, PracticeStatus, CompanyTutorResponseDTO } from '@/types';
 
 export default function EstudiantesPage() {
   const [currentUser, setCurrentUser] = useState<UserResponseDTO | null>(null);
@@ -38,6 +41,18 @@ export default function EstudiantesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [eligibilityFilter, setEligibilityFilter] = useState('');
   const [practiceStatusFilter, setPracticeStatusFilter] = useState('');
+
+  // ============================================================================
+  // HU09 / CU09 (Criterio 3) - Modal de Formalización/Seguimiento y Selector de Evaluadores Directos
+  // ============================================================================
+  const [selectedStudentForEvaluator, setSelectedStudentForEvaluator] = useState<UserResponseDTO | null>(null);
+  const [availableEvaluators, setAvailableEvaluators] = useState<CompanyTutorResponseDTO[]>([]);
+  const [isLoadingEvaluators, setIsLoadingEvaluators] = useState(false);
+  const [selectedEvaluatorId, setSelectedEvaluatorId] = useState<string>('');
+  const [evaluatorNotes, setEvaluatorNotes] = useState<string>('');
+  const [isAssigningEvaluator, setIsAssigningEvaluator] = useState(false);
+  const [evaluatorError, setEvaluatorError] = useState<string | null>(null);
+  const [evaluatorSuccess, setEvaluatorSuccess] = useState<string | null>(null);
 
   // Cargar usuario autenticado
   useEffect(() => {
@@ -79,8 +94,16 @@ export default function EstudiantesPage() {
             activePractice: {
               id: p.id,
               currentStatus: p.currentStatus,
+              companyId: p.companyId || p.company?.id,
               companyName: p.company?.businessName,
               vacancyTitle: p.vacancy?.title,
+              tutorId: p.tutorId || p.tutor?.id || null,
+              tutorName: p.tutor?.name || null,
+              tutorEmail: p.tutor?.email || null,
+              tutorCargo:
+                p.tutor?.program && p.tutor.program !== 'Ingeniería de Sistemas'
+                  ? p.tutor.program
+                  : 'Supervisor Empresarial',
             },
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
@@ -109,6 +132,77 @@ export default function EstudiantesPage() {
       setIsLoadingStudents(false);
     }
   }, [currentUser, statusFilter, searchTerm]);
+
+  // Abrir formulario de formalización/seguimiento para seleccionar evaluador directo (CU09 - Criterio 3)
+  const handleOpenEvaluatorModal = async (student: UserResponseDTO) => {
+    if (!student.activePractice?.id) return;
+    setSelectedStudentForEvaluator(student);
+    setSelectedEvaluatorId(student.activePractice.tutorId || '');
+    setEvaluatorNotes('');
+    setEvaluatorError(null);
+    setEvaluatorSuccess(null);
+    setIsLoadingEvaluators(true);
+
+    try {
+      const res = await fetch(`/api/v1/practicas/${student.activePractice.id}/evaluador`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const list: CompanyTutorResponseDTO[] = data.data.evaluators || [];
+        setAvailableEvaluators(list);
+        if (!student.activePractice.tutorId && list.length > 0) {
+          setSelectedEvaluatorId(list[0].id);
+        }
+      } else {
+        setAvailableEvaluators([]);
+      }
+    } catch (e) {
+      console.error('Error cargando evaluadores directos:', e);
+      setAvailableEvaluators([]);
+    } finally {
+      setIsLoadingEvaluators(false);
+    }
+  };
+
+  const handleAssignEvaluator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForEvaluator?.activePractice?.id || !selectedEvaluatorId) {
+      setEvaluatorError('Debe seleccionar un supervisor inmediato del selector de evaluadores directos.');
+      return;
+    }
+
+    setIsAssigningEvaluator(true);
+    setEvaluatorError(null);
+    setEvaluatorSuccess(null);
+
+    try {
+      const res = await fetch(
+        `/api/v1/practicas/${selectedStudentForEvaluator.activePractice.id}/evaluador`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tutorId: selectedEvaluatorId,
+            notes: evaluatorNotes || 'Asignación de supervisor inmediato como evaluador directo (CU09)',
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setEvaluatorError(data.error?.message || 'Error al asignar el evaluador directo.');
+        return;
+      }
+
+      setEvaluatorSuccess(
+        data.message || 'Evaluador directo asignado exitosamente al plan de práctica.'
+      );
+      loadStudents();
+    } catch (err) {
+      console.error(err);
+      setEvaluatorError('Error de conexión al asignar el evaluador directo.');
+    } finally {
+      setIsAssigningEvaluator(false);
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -445,8 +539,8 @@ export default function EstudiantesPage() {
                       </div>
                     </div>
 
-                    {/* Estado de la Práctica */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    {/* Estado de la Práctica y Evaluador Directo (CU09 - Criterio 3) */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-slate-500 font-medium">Estado de Práctica:</span>
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${practiceBadge.color}`}>
@@ -455,9 +549,32 @@ export default function EstudiantesPage() {
                       </div>
 
                       {student.activePractice?.companyName && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-700 mt-1">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="font-semibold truncate">{student.activePractice.companyName}</span>
+                        <div className="space-y-2 mt-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-800">
+                            <Building2 className="w-3.5 h-3.5 text-red-700 shrink-0" />
+                            <span className="font-bold truncate">{student.activePractice.companyName}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">
+                                Evaluador:{' '}
+                                <strong className="text-slate-800">
+                                  {student.activePractice.tutorName || 'Pendiente por asignar'}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEvaluatorModal(student)}
+                            className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Formalización / Asignar Evaluador (HU09)</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -465,6 +582,138 @@ export default function EstudiantesPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* MODAL: FORMULARIO DE FORMALIZACIÓN / SEGUIMIENTO DE PRÁCTICA - SELECTOR DE EVALUADORES DIRECTOS (CU09 - CRITERIO 3) */}
+        {selectedStudentForEvaluator && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-5 relative">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <span>CU09 • Formalización y Seguimiento de Práctica</span>
+                  </div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Asignación de Evaluador Directo al Plan de Práctica
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Seleccione un supervisor inmediato vinculado a{' '}
+                    <strong>{selectedStudentForEvaluator.activePractice?.companyName}</strong> para evaluar el desempeño de{' '}
+                    <strong>{selectedStudentForEvaluator.name}</strong>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedStudentForEvaluator(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {evaluatorError && (
+                <div
+                  role="alert"
+                  className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2.5"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>{evaluatorError}</span>
+                </div>
+              )}
+
+              {evaluatorSuccess && (
+                <div
+                  role="status"
+                  className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-start gap-2.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{evaluatorSuccess}</span>
+                </div>
+              )}
+
+              {isLoadingEvaluators ? (
+                <div className="py-8 text-center text-slate-500 space-y-2">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto text-red-700" />
+                  <p className="text-xs">Cargando supervisores activos de la organización...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleAssignEvaluator} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="evaluator-selector" className="text-xs font-bold text-slate-700">
+                      Selector de Evaluadores Directos (Supervisores Activos) <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      id="evaluator-selector"
+                      value={selectedEvaluatorId}
+                      onChange={(e) => setSelectedEvaluatorId(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                    >
+                      <option value="">Seleccione un supervisor vinculado...</option>
+                      {availableEvaluators.map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.nombre} — {ev.cargo} ({ev.correo}) [{ev.estado}]
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-400">
+                      Se listan únicamente los supervisores vinculados a la empresa activa con estado <strong>Activo</strong>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="evaluator-notes" className="text-xs font-bold text-slate-700">
+                      Observaciones de Formalización / Plan de Práctica (Opcional)
+                    </label>
+                    <textarea
+                      id="evaluator-notes"
+                      rows={2}
+                      placeholder="Ej. Designado como evaluador directo para el seguimiento del plan de trabajo semestral."
+                      value={evaluatorNotes}
+                      onChange={(e) => setEvaluatorNotes(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <Link
+                      href="/empresas"
+                      className="text-xs font-bold text-red-700 hover:underline flex items-center gap-1"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Vincular nuevo supervisor</span>
+                    </Link>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentForEvaluator(null)}
+                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Cerrar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isAssigningEvaluator || !selectedEvaluatorId}
+                        className="px-5 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        {isAssigningEvaluator ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Asignando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Asignar Evaluador Directo</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         )}
       </main>
