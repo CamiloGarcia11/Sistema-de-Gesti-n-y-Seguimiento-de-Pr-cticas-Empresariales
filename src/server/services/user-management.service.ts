@@ -555,8 +555,17 @@ export class UserManagementService {
         ? {
             id: latestPractice.id,
             currentStatus: latestPractice.currentStatus,
+            companyId: latestPractice.companyId || latestPractice.company?.id || null,
             companyName: latestPractice.company?.businessName || null,
             vacancyTitle: latestPractice.vacancy?.title || null,
+            tutorId: latestPractice.tutorId || latestPractice.tutor?.id || null,
+            tutorName: latestPractice.tutor?.name || null,
+            tutorEmail: latestPractice.tutor?.email || null,
+            tutorCargo:
+              latestPractice.tutor?.program &&
+              latestPractice.tutor.program !== 'Ingeniería de Sistemas'
+                ? latestPractice.tutor.program
+                : 'Supervisor Empresarial',
           }
         : null,
       createdAt: user.createdAt,

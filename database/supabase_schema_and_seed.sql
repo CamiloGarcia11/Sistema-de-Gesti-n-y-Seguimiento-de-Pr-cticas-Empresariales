@@ -137,10 +137,10 @@ CREATE TABLE IF NOT EXISTS "companies" (
     "deleted_at" TIMESTAMPTZ
 );
 
--- Tabla: users (Cuentas de usuario y RBAC - HU01)
+-- Tabla: users (Cuentas de usuario, RBAC - HU01 y Tutores Empresariales - HU09 / CU09)
 CREATE TABLE IF NOT EXISTS "users" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "email" VARCHAR(255) NOT NULL UNIQUE,
+    "email" VARCHAR(255) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "document_type" VARCHAR(20) NOT NULL DEFAULT 'CC',
@@ -154,11 +154,68 @@ CREATE TABLE IF NOT EXISTS "users" (
     "academic_average" DOUBLE PRECISION,
     "approved_credits" INT,
     "program" VARCHAR(150) NOT NULL DEFAULT 'Ingeniería de Sistemas',
-    "company_id" UUID REFERENCES "companies"("id") ON DELETE SET NULL,
+    "company_id" UUID,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "deleted_at" TIMESTAMPTZ
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "fk_tutor_empresa" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE SET NULL,
+    CONSTRAINT "uq_tutor_email" UNIQUE ("email"),
+    CONSTRAINT "uq_tutor_documento_empresa" UNIQUE ("document_number", "company_id"),
+    CONSTRAINT "chk_correo_tutor_valido" CHECK ("email" ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
+
+-- Vistas conceptuales para HU09 / CU09 (empresas, usuarios, tutores_empresariales)
+CREATE OR REPLACE VIEW "empresas" AS
+SELECT
+    "id",
+    "nit",
+    "business_name" AS "razon_social",
+    "legal_representative" AS "representante_legal",
+    "contact_email" AS "correo_contacto",
+    "contact_phone" AS "telefono_contacto",
+    "address" AS "direccion",
+    "city" AS "ciudad",
+    "is_active" AS "activo",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion",
+    "deleted_at"
+FROM "companies";
+
+CREATE OR REPLACE VIEW "usuarios" AS
+SELECT
+    "id",
+    "email" AS "correo",
+    "name" AS "nombre",
+    "document_type" AS "tipo_documento",
+    "document_number" AS "documento",
+    "phone" AS "telefono",
+    "role" AS "rol",
+    "status" AS "estado",
+    "is_active" AS "activo",
+    "company_id" AS "empresa_id",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion"
+FROM "users";
+
+CREATE OR REPLACE VIEW "tutores_empresariales" AS
+SELECT
+    "id",
+    "id" AS "usuario_id",
+    "company_id" AS "empresa_id",
+    "name" AS "nombre",
+    "program" AS "cargo",
+    "email" AS "correo",
+    "document_type" AS "tipo_documento",
+    "document_number" AS "documento",
+    "phone" AS "telefono",
+    CASE WHEN "status" = 'ACTIVO' AND "is_active" = TRUE THEN 'Activo' ELSE 'Inactivo' END AS "estado",
+    "status",
+    "is_active",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion",
+    "deleted_at"
+FROM "users"
+WHERE "role" = 'TUTOR_EMPRESARIAL' AND "deleted_at" IS NULL;
 
 -- Tabla: agreements (Convenios marco e interinstitucionales - RN-01)
 CREATE TABLE IF NOT EXISTS "agreements" (
@@ -254,6 +311,26 @@ CREATE TABLE IF NOT EXISTS "practices" (
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "deleted_at" TIMESTAMPTZ
 );
+
+-- Vista conceptual asignaciones_practica para CU09
+CREATE OR REPLACE VIEW "asignaciones_practica" AS
+SELECT
+    "id",
+    "application_id" AS "postulacion_id",
+    "student_id" AS "estudiante_id",
+    "company_id" AS "empresa_id",
+    "vacancy_id" AS "plaza_id",
+    "teacher_id" AS "docente_id",
+    "tutor_id" AS "tutor_empresarial_id",
+    "director_id",
+    "current_status" AS "estado_actual",
+    "arl_support_url",
+    "start_date" AS "fecha_inicio",
+    "end_date" AS "fecha_fin",
+    "is_active" AS "activo",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion"
+FROM "practices";
 
 -- Tabla: practice_status_history (Auditoría e Inmutabilidad - RNF05, RNF15)
 CREATE TABLE IF NOT EXISTS "practice_status_history" (
