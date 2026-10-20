@@ -102,46 +102,50 @@ enum EvaluationType {
 // ------------------------------------------------------------------------------
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  passwordHash   String    @map("password_hash")
-  name           String
-  documentType   String    @default("CC") @map("document_type")
-  documentNumber String    @unique @map("document_number")
-  phone          String?
-  role           Role
-  status         UserStatus @default(ACTIVO)
-  isActive       Boolean    @default(true) @map("is_active")
-  tokenVersion   Int        @default(1) @map("token_version")
-  studentCode     String?   @unique @map("student_code")
-  academicAverage Float?    @map("academic_average")
-  approvedCredits Int?      @map("approved_credits")
-  program         String    @default("Ingeniería de Sistemas")
-  companyId      String?   @map("company_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String     @map("password_hash")
+  name            String
+  documentType    String     @default("CC") @map("document_type")
+  documentNumber  String     @unique @map("document_number")
+  phone           String?
+  role            Role
+  status          UserStatus @default(ACTIVO)
+  isActive        Boolean    @default(true) @map("is_active")
+  tokenVersion    Int        @default(1) @map("token_version")
+  studentCode     String?    @unique @map("student_code")
+  academicAverage Float?     @map("academic_average")
+  approvedCredits Int?       @map("approved_credits")
+  program         String     @default("Ingeniería de Sistemas")
+  specialty       String?
+  availableHours  Int        @default(0) @map("available_hours")
+  companyId       String?    @map("company_id")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
 
   // Relaciones
-  company                 Company?               @relation("CompanyTutors", fields: [companyId], references: [id])
-  vacanciesCreated        Vacancy[]              @relation("VacancyCreator")
-  applications            Application[]          @relation("StudentApplications")
-  practicesAsStudent      Practice[]             @relation("PracticeStudent")
-  practicesAsTeacher      Practice[]             @relation("PracticeTeacher")
-  practicesAsTutor        Practice[]             @relation("PracticeTutor")
-  practicesAsDirector     Practice[]             @relation("PracticeDirector")
-  arlValidationsMade      Practice[]             @relation("ArlValidator")
+  company                 Company?                @relation("CompanyTutors", fields: [companyId], references: [id])
+  vacanciesCreated        Vacancy[]               @relation("VacancyCreator")
+  applications            Application[]           @relation("StudentApplications")
+  practicesAsStudent      Practice[]              @relation("PracticeStudent")
+  practicesAsTeacher      Practice[]              @relation("PracticeTeacher")
+  practicesAsTutor        Practice[]              @relation("PracticeTutor")
+  practicesAsDirector     Practice[]              @relation("PracticeDirector")
+  arlValidationsMade      Practice[]              @relation("ArlValidator")
   statusHistoryChanges    PracticeStatusHistory[] @relation("StatusChanger")
-  tutorPlanApprovals      WorkPlan[]             @relation("WorkPlanTutorApprover")
-  teacherPlanApprovals    WorkPlan[]             @relation("WorkPlanTeacherApprover")
-  followUpVisits          FollowUpVisit[]        @relation("TeacherVisits")
-  reportsSubmitted        Report[]               @relation("StudentReports")
-  reportsReviewed         Report[]               @relation("ReportReviewer")
+  tutorPlanApprovals      WorkPlan[]              @relation("WorkPlanTutorApprover")
+  teacherPlanApprovals    WorkPlan[]              @relation("WorkPlanTeacherApprover")
+  followUpVisits          FollowUpVisit[]         @relation("TeacherVisits")
+  reportsSubmitted        Report[]                @relation("StudentReports")
+  reportsReviewed         Report[]                @relation("ReportReviewer")
   advanceReportsSubmitted AdvanceReport[]        @relation("StudentAdvanceReports")
   advanceReportsReviewed  AdvanceReport[]        @relation("AdvanceReportReviewer")
   followUpLogsSubmitted   FollowUpLog[]          @relation("StudentFollowUpLogs")
   attachmentsUploaded     Attachment[]           @relation("UserAttachments")
-  evaluationsGiven        Evaluation[]           @relation("EvaluatorUser")
+  evaluationsGiven        Evaluation[]            @relation("EvaluatorUser")
+  tutorAssignments        TutorAssignment[]       @relation("AssignedTutor")
+  tutorAssignmentsCreated TutorAssignment[]       @relation("TutorAssignmentCreator")
 
   @@index([email])
   @@index([role])
@@ -150,24 +154,24 @@ model User {
 }
 
 model Company {
-  id                  String       @id @default(uuid())
-  nit                 String       @unique
-  businessName        String       @map("business_name")
-  legalRepresentative String       @map("legal_representative")
-  contactEmail        String       @map("contact_email")
-  contactPhone        String       @map("contact_phone")
+  id                  String    @id @default(uuid())
+  nit                 String    @unique
+  businessName        String    @map("business_name")
+  legalRepresentative String    @map("legal_representative")
+  contactEmail        String    @map("contact_email")
+  contactPhone        String    @map("contact_phone")
   address             String
   city                String
-  isActive            Boolean      @default(true) @map("is_active")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
-  deletedAt           DateTime?    @map("deleted_at")
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
 
   // Relaciones
-  agreements          Agreement[]
-  tutors              User[]       @relation("CompanyTutors")
-  vacancies           Vacancy[]
-  practices           Practice[]
+  agreements Agreement[]
+  tutors     User[]      @relation("CompanyTutors")
+  vacancies  Vacancy[]
+  practices  Practice[]
 
   @@index([nit])
   @@index([businessName])
@@ -189,7 +193,7 @@ model Agreement {
   deletedAt        DateTime?       @map("deleted_at")
 
   // Relaciones
-  company          Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([status])
@@ -215,10 +219,10 @@ model Vacancy {
   deletedAt      DateTime?     @map("deleted_at")
 
   // Relaciones
-  company        Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  createdBy      User          @relation("VacancyCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  applications   Application[]
-  practices      Practice[]
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy    User          @relation("VacancyCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  applications Application[]
+  practices    Practice[]
 
   @@index([companyId])
   @@index([status])
@@ -238,9 +242,9 @@ model Application {
   deletedAt             DateTime?         @map("deleted_at")
 
   // Relaciones
-  vacancy               Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
-  student               User              @relation("StudentApplications", fields: [studentId], references: [id], onDelete: Restrict)
-  practice              Practice?
+  vacancy  Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  student  User      @relation("StudentApplications", fields: [studentId], references: [id], onDelete: Restrict)
+  practice Practice?
 
   @@index([vacancyId])
   @@index([studentId])
@@ -249,49 +253,50 @@ model Application {
 }
 
 model Practice {
-  id                    String         @id @default(uuid())
-  applicationId         String?        @unique @map("application_id")
-  studentId             String         @map("student_id")
-  companyId             String         @map("company_id")
-  vacancyId             String?        @map("vacancy_id")
-  teacherId             String?        @map("teacher_id")
-  tutorId               String?        @map("tutor_id")
-  directorId            String?        @map("director_id")
-  currentStatus         PracticeStatus @default(ASPIRANTE) @map("current_status")
-  
+  id            String         @id @default(uuid())
+  applicationId String?        @unique @map("application_id")
+  studentId     String         @map("student_id")
+  companyId     String         @map("company_id")
+  vacancyId     String?        @map("vacancy_id")
+  teacherId     String?        @map("teacher_id")
+  tutorId       String?        @map("tutor_id")
+  directorId    String?        @map("director_id")
+  currentStatus PracticeStatus @default(ASPIRANTE) @map("current_status")
+
   // Soporte de ARL y Formalización (RN-06)
-  arlSupportUrl         String?        @map("arl_support_url")
-  arlValidatedAt        DateTime?      @map("arl_validated_at")
-  arlValidatedById      String?        @map("arl_validated_by_id")
-  
-  presentationLetterUrl String?        @map("presentation_letter_url")
-  startDate             DateTime?      @map("start_date")
-  endDate               DateTime?      @map("end_date")
-  totalHoursRequired    Int            @default(320) @map("total_hours_required")
-  totalHoursCompleted   Int            @default(0) @map("total_hours_completed")
-  finalScore            Float?         @map("final_score")
-  isActive              Boolean        @default(true) @map("is_active")
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
-  deletedAt             DateTime?      @map("deleted_at")
+  arlSupportUrl    String?   @map("arl_support_url")
+  arlValidatedAt   DateTime? @map("arl_validated_at")
+  arlValidatedById String?   @map("arl_validated_by_id")
+
+  presentationLetterUrl String?   @map("presentation_letter_url")
+  startDate             DateTime? @map("start_date")
+  endDate               DateTime? @map("end_date")
+  totalHoursRequired    Int       @default(320) @map("total_hours_required")
+  totalHoursCompleted   Int       @default(0) @map("total_hours_completed")
+  finalScore            Float?    @map("final_score")
+  isActive              Boolean   @default(true) @map("is_active")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
 
   // Relaciones
-  application           Application?           @relation(fields: [applicationId], references: [id], onDelete: Restrict)
-  student               User                   @relation("PracticeStudent", fields: [studentId], references: [id], onDelete: Restrict)
-  company               Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  vacancy               Vacancy?               @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
-  teacher               User?                  @relation("PracticeTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
-  tutor                 User?                  @relation("PracticeTutor", fields: [tutorId], references: [id], onDelete: SetNull)
-  director              User?                  @relation("PracticeDirector", fields: [directorId], references: [id], onDelete: SetNull)
-  arlValidator          User?                  @relation("ArlValidator", fields: [arlValidatedById], references: [id], onDelete: SetNull)
-  
-  statusHistory         PracticeStatusHistory[]
-  workPlan              WorkPlan?
-  followUpVisits        FollowUpVisit[]
-  reports               Report[]
-  advanceReports        AdvanceReport[]
-  followUpLogs          FollowUpLog[]
-  evaluations           Evaluation[]
+  application  Application? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  student      User         @relation("PracticeStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  vacancy      Vacancy?     @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+  teacher      User?        @relation("PracticeTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  tutor        User?        @relation("PracticeTutor", fields: [tutorId], references: [id], onDelete: SetNull)
+  director     User?        @relation("PracticeDirector", fields: [directorId], references: [id], onDelete: SetNull)
+  arlValidator User?        @relation("ArlValidator", fields: [arlValidatedById], references: [id], onDelete: SetNull)
+
+  statusHistory      PracticeStatusHistory[]
+  workPlan           WorkPlan?
+  followUpVisits     FollowUpVisit[]
+  reports            Report[]
+  advanceReports     AdvanceReport[]
+  followUpLogs       FollowUpLog[]
+  evaluations        Evaluation[]
+  tutoringAssignment TutorAssignment?
 
   @@index([studentId])
   @@index([companyId])
@@ -301,6 +306,22 @@ model Practice {
   @@map("practices")
 }
 
+model TutorAssignment {
+  id            String   @id @default(uuid())
+  practiceId    String   @unique @map("practice_id")
+  tutorId       String   @map("tutor_id")
+  assignedById  String   @map("assigned_by_id")
+  assignedHours Int      @map("assigned_hours")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  practice   Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  tutor      User     @relation("AssignedTutor", fields: [tutorId], references: [id], onDelete: Restrict)
+  assignedBy User     @relation("TutorAssignmentCreator", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([tutorId])
+  @@map("asignaciones_tutoria")
+}
+
 model PracticeStatusHistory {
   id              String         @id @default(uuid())
   practiceId      String         @map("practice_id")
@@ -308,12 +329,12 @@ model PracticeStatusHistory {
   toStatus        PracticeStatus @map("to_status")
   changedByUserId String         @map("changed_by_user_id")
   notes           String?
-  metadata        Json?          // Snapshot de validaciones, ARL, aprobaciones concurrentes, etc.
+  metadata        Json? // Snapshot de validaciones, ARL, aprobaciones concurrentes, etc.
   createdAt       DateTime       @default(now()) @map("created_at")
 
   // Relaciones
-  practice        Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  changedBy       User           @relation("StatusChanger", fields: [changedByUserId], references: [id], onDelete: Restrict)
+  practice  Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  changedBy User     @relation("StatusChanger", fields: [changedByUserId], references: [id], onDelete: Restrict)
 
   @@index([practiceId])
   @@index([changedByUserId])
@@ -322,31 +343,31 @@ model PracticeStatusHistory {
 }
 
 model WorkPlan {
-  id                  String         @id @default(uuid())
-  practiceId          String         @unique @map("practice_id")
-  objectives          String
-  methodology         String
-  schedule            Json           // Cronograma de actividades estructurado
-  documentUrl         String?        @map("document_url")
-  status              WorkPlanStatus @default(BORRADOR)
-  
+  id          String         @id @default(uuid())
+  practiceId  String         @unique @map("practice_id")
+  objectives  String
+  methodology String
+  schedule    Json // Cronograma de actividades estructurado
+  documentUrl String?        @map("document_url")
+  status      WorkPlanStatus @default(BORRADOR)
+
   // Aprobación Dual Concurrente (RN-07 y RN-08)
-  tutorApproved       Boolean        @default(false) @map("tutor_approved")
-  tutorApprovedAt     DateTime?      @map("tutor_approved_at")
-  tutorApprovedById   String?        @map("tutor_approved_by_id")
+  tutorApproved     Boolean   @default(false) @map("tutor_approved")
+  tutorApprovedAt   DateTime? @map("tutor_approved_at")
+  tutorApprovedById String?   @map("tutor_approved_by_id")
 
-  teacherApproved     Boolean        @default(false) @map("teacher_approved")
-  teacherApprovedAt   DateTime?      @map("teacher_approved_at")
-  teacherApprovedById String?        @map("teacher_approved_by_id")
+  teacherApproved     Boolean   @default(false) @map("teacher_approved")
+  teacherApprovedAt   DateTime? @map("teacher_approved_at")
+  teacherApprovedById String?   @map("teacher_approved_by_id")
 
-  feedback            String?
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  feedback  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  practice            Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  tutorApprovedBy     User?          @relation("WorkPlanTutorApprover", fields: [tutorApprovedById], references: [id], onDelete: SetNull)
-  teacherApprovedBy   User?          @relation("WorkPlanTeacherApprover", fields: [teacherApprovedById], references: [id], onDelete: SetNull)
+  practice          Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  tutorApprovedBy   User?    @relation("WorkPlanTutorApprover", fields: [tutorApprovedById], references: [id], onDelete: SetNull)
+  teacherApprovedBy User?    @relation("WorkPlanTeacherApprover", fields: [teacherApprovedById], references: [id], onDelete: SetNull)
 
   @@index([practiceId])
   @@index([status])
@@ -354,20 +375,20 @@ model WorkPlan {
 }
 
 model FollowUpVisit {
-  id                 String    @id @default(uuid())
-  practiceId         String    @map("practice_id")
-  teacherId          String    @map("teacher_id")
-  visitDate          DateTime  @map("visit_date")
-  visitType          String    @default("PRESENCIAL") @map("visit_type") // PRESENCIAL, VIRTUAL
+  id                 String   @id @default(uuid())
+  practiceId         String   @map("practice_id")
+  teacherId          String   @map("teacher_id")
+  visitDate          DateTime @map("visit_date")
+  visitType          String   @default("PRESENCIAL") @map("visit_type") // PRESENCIAL, VIRTUAL
   observations       String
   commitments        String?
-  supportDocumentUrl String?   @map("support_document_url")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  supportDocumentUrl String?  @map("support_document_url")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  practice           Practice  @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  teacher            User      @relation("TeacherVisits", fields: [teacherId], references: [id], onDelete: Restrict)
+  practice Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  teacher  User     @relation("TeacherVisits", fields: [teacherId], references: [id], onDelete: Restrict)
 
   @@index([practiceId])
   @@index([teacherId])
@@ -391,9 +412,9 @@ model Report {
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
   // Relaciones
-  practice      Practice     @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  student       User         @relation("StudentReports", fields: [studentId], references: [id], onDelete: Restrict)
-  reviewedBy    User?        @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  practice   Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  student    User     @relation("StudentReports", fields: [studentId], references: [id], onDelete: Restrict)
+  reviewedBy User?    @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([practiceId])
   @@index([studentId])
@@ -403,20 +424,20 @@ model Report {
 }
 
 model Evaluation {
-  id                 String         @id @default(uuid())
-  practiceId         String         @map("practice_id")
-  evaluatorId        String         @map("evaluator_id")
-  type               EvaluationType
-  criteriaScores     Json           // Ponderación de competencias / criterios evaluados
-  quantitativeScore  Float          @map("quantitative_score") // 0.0 - 5.0
-  qualitativeComments String?       @map("qualitative_comments")
-  documentUrl        String?        @map("document_url")
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  id                  String         @id @default(uuid())
+  practiceId          String         @map("practice_id")
+  evaluatorId         String         @map("evaluator_id")
+  type                EvaluationType
+  criteriaScores      Json // Ponderación de competencias / criterios evaluados
+  quantitativeScore   Float          @map("quantitative_score") // 0.0 - 5.0
+  qualitativeComments String?        @map("qualitative_comments")
+  documentUrl         String?        @map("document_url")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
-  practice           Practice       @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  evaluator          User           @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Restrict)
+  practice  Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  evaluator User     @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Restrict)
 
   @@index([practiceId])
   @@index([evaluatorId])

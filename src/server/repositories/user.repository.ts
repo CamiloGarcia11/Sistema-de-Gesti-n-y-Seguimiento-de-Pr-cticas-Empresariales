@@ -218,6 +218,14 @@ export class UserRepository {
                   title: true,
                 },
               },
+              tutor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  program: true,
+                },
+              },
             },
           },
         },

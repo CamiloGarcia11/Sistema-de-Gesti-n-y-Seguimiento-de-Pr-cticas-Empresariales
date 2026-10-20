@@ -162,8 +162,13 @@ export interface UserResponseDTO {
   activePractice?: {
     id: string;
     currentStatus: PracticeStatus;
+    companyId?: string | null;
     companyName?: string | null;
     vacancyTitle?: string | null;
+    tutorId?: string | null;
+    tutorName?: string | null;
+    tutorEmail?: string | null;
+    tutorCargo?: string | null;
   } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -426,6 +431,106 @@ export interface ApplicationStatusUpdateResultDTO {
   rejectionReason?: string | null;
   practiceId?: string | null;
   practiceStatus?: PracticeStatus | null;
+  message: string;
+}
+
+// ------------------------------------------------------------------------------
+// DTOs de Vinculación de Tutores Empresariales (HU09 / CU09)
+// ------------------------------------------------------------------------------
+
+export type TutorEstadoDomain = 'Activo' | 'Inactivo';
+
+export interface CreateCompanyTutorDTO {
+  // Campos en español (Dominio CU09) y en inglés (API estándar)
+  nombre?: string;
+  name?: string;
+  cargo?: string;
+  position?: string;
+  correo?: string;
+  correoInstitucional?: string;
+  email?: string;
+  documento?: string;
+  documentNumber?: string;
+  tipoDocumento?: string;
+  documentType?: string;
+  telefono?: string;
+  phone?: string;
+  empresaId?: string;
+  companyId?: string;
+  password?: string;
+}
+
+export interface CompanyTutorResponseDTO {
+  id: string;
+  usuarioId: string;
+  userId: string;
+  empresaId: string;
+  companyId: string;
+  nombre: string;
+  name: string;
+  cargo: string;
+  position: string;
+  correo: string;
+  email: string;
+  tipoDocumento: string;
+  documentType: string;
+  documento: string;
+  documentNumber: string;
+  telefono: string | null;
+  phone: string | null;
+  role: Role;
+  estado: TutorEstadoDomain;
+  status: TutorEstadoDomain;
+  userStatus: UserStatus;
+  isActive: boolean;
+  company?: {
+    id: string;
+    businessName: string;
+    nit: string;
+    city?: string;
+    isActive: boolean;
+  } | null;
+  assignedPracticesCount?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CompanyTutorFilterDTO {
+  companyId?: string;
+  empresaId?: string;
+  onlyActive?: boolean;
+  search?: string;
+}
+
+export interface AssignPracticeEvaluatorDTO {
+  tutorId?: string;
+  supervisorId?: string;
+  evaluadorId?: string;
+  teacherId?: string;
+  docenteId?: string;
+  notes?: string;
+}
+
+export interface PracticeEvaluatorAssignmentResultDTO {
+  practiceId: string;
+  studentId: string;
+  companyId: string;
+  tutorId: string;
+  tutor: {
+    id: string;
+    name: string;
+    nombre: string;
+    cargo: string;
+    position: string;
+    email: string;
+    correo: string;
+    documentNumber: string;
+    documento: string;
+    estado: TutorEstadoDomain;
+  };
+  teacherId?: string | null;
+  currentStatus: PracticeStatus;
+  updatedAt: Date;
   message: string;
 }
 
