@@ -605,6 +605,48 @@ CREATE TABLE IF NOT EXISTS "archivos_adjuntos" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- ==============================================================================
+-- HU05 / CU02: PARAMETRIZACIÓN DE PERIODOS ACADÉMICOS Y ELEGIBILIDAD
+-- Entidad BD: periodos_academicos
+-- Restricción SQL: chk_fechas_periodo (fecha_fin > fecha_inicio)
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS "periodos_academicos" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "codigo" VARCHAR(50) NOT NULL,
+    "nombre" VARCHAR(255) NOT NULL,
+    "descripcion" TEXT,
+    "fecha_inicio" TIMESTAMPTZ NOT NULL,
+    "fecha_fin" TIMESTAMPTZ NOT NULL,
+    "fecha_inicio_convocatorias" TIMESTAMPTZ,
+    "fecha_fin_convocatorias" TIMESTAMPTZ,
+    "fecha_inicio_informes" TIMESTAMPTZ,
+    "fecha_fin_informes" TIMESTAMPTZ,
+    "estado" VARCHAR(50) NOT NULL DEFAULT 'Abierto',
+    "activo" BOOLEAN NOT NULL DEFAULT TRUE,
+    "creado_por_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "uq_codigo_periodo" UNIQUE ("codigo"),
+    CONSTRAINT "chk_fechas_periodo" CHECK ("fecha_fin" > "fecha_inicio"),
+    CONSTRAINT "chk_fechas_convocatorias_periodo" CHECK (
+        "fecha_inicio_convocatorias" IS NULL OR "fecha_fin_convocatorias" IS NULL OR (
+            "fecha_fin_convocatorias" > "fecha_inicio_convocatorias" AND
+            "fecha_inicio_convocatorias" >= "fecha_inicio" AND
+            "fecha_fin_convocatorias" <= "fecha_fin"
+        )
+    ),
+    CONSTRAINT "chk_fechas_informes_periodo" CHECK (
+        "fecha_inicio_informes" IS NULL OR "fecha_fin_informes" IS NULL OR (
+            "fecha_fin_informes" > "fecha_inicio_informes" AND
+            "fecha_inicio_informes" >= "fecha_inicio" AND
+            "fecha_fin_informes" <= "fecha_fin"
+        )
+    ),
+    CONSTRAINT "chk_estado_periodo" CHECK ("estado" IN ('Abierto', 'En Configuración', 'Cerrado', 'Activo', 'Inactivo'))
+);
+
 CREATE TABLE IF NOT EXISTS "evaluations" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "practice_id" UUID NOT NULL REFERENCES "practices"("id") ON DELETE CASCADE,
@@ -682,6 +724,16 @@ DO $$ BEGIN
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+    CREATE TRIGGER update_periodos_academicos_updated_at BEFORE UPDATE ON "periodos_academicos"
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_evaluations_updated_at_noop BEFORE UPDATE ON "evaluations"
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ------------------------------------------------------------------------------
 -- 6. ÍNDICES DE ALTO RENDIMIENTO
 -- ------------------------------------------------------------------------------
@@ -729,6 +781,12 @@ CREATE INDEX IF NOT EXISTS "idx_informes_estado" ON "informes_avance"("estado");
 CREATE INDEX IF NOT EXISTS "idx_bitacoras_informe_id" ON "bitacoras_seguimiento"("informe_id");
 CREATE INDEX IF NOT EXISTS "idx_bitacoras_practica_id" ON "bitacoras_seguimiento"("practica_id");
 CREATE INDEX IF NOT EXISTS "idx_archivos_entidad" ON "archivos_adjuntos"("entidad_tipo", "entidad_id");
+
+-- Índices HU05 / CU02: Parametrización de Periodos Académicos
+CREATE INDEX IF NOT EXISTS "idx_periodos_codigo" ON "periodos_academicos"("codigo");
+CREATE INDEX IF NOT EXISTS "idx_periodos_estado" ON "periodos_academicos"("estado");
+CREATE INDEX IF NOT EXISTS "idx_periodos_activo" ON "periodos_academicos"("activo");
+CREATE INDEX IF NOT EXISTS "idx_periodos_fechas" ON "periodos_academicos"("fecha_inicio", "fecha_fin");
 
 -- ------------------------------------------------------------------------------
 -- 7. CONFIGURACIÓN DE SUPABASE STORAGE (BUCKET DE EXPEDIENTES)
@@ -895,3 +953,43 @@ VALUES
     ('e1111111-1111-1111-1111-111111111111', 'POSTULADO', 'PRESENTADO_A_EMPRESA', 'c2222222-2222-2222-2222-222222222222', 'Emisión de Oficio de Presentación #OP-2026-45'),
     ('e1111111-1111-1111-1111-111111111111', 'PRESENTADO_A_EMPRESA', 'ACEPTADO_ARL_PENDIENTE', 'c4444444-4444-4444-4444-444444444444', 'Estudiante seleccionado tras entrevista técnica. Pendiente afiliación ARL.')
 ON CONFLICT ("id") DO NOTHING;
+
+
+-- 9. Insertar Periodos Lectivos Iniciales (HU05 / CU02)
+INSERT INTO "periodos_academicos" (
+    "id", "codigo", "nombre", "descripcion", "fecha_inicio", "fecha_fin",
+    "fecha_inicio_convocatorias", "fecha_fin_convocatorias",
+    "fecha_inicio_informes", "fecha_fin_informes",
+    "estado", "activo", "creado_por_id"
+) VALUES
+(
+    'f1111111-1111-1111-1111-111111111111',
+    '2026-1',
+    'Primer Semestre Académico 2026',
+    'Periodo lectivo oficial para convocatorias, formalización e informes de práctica del primer semestre de 2026.',
+    '2026-02-01 00:00:00+00',
+    '2026-06-30 23:59:59+00',
+    '2026-02-01 00:00:00+00',
+    '2026-03-15 23:59:59+00',
+    '2026-03-01 00:00:00+00',
+    '2026-06-25 23:59:59+00',
+    'Cerrado',
+    FALSE,
+    'c2222222-2222-2222-2222-222222222222'
+),
+(
+    'f2222222-2222-2222-2222-222222222222',
+    '2026-2',
+    'Segundo Semestre Académico 2026',
+    'Periodo lectivo vigente para convocatorias, formalización e informes de práctica del segundo semestre de 2026.',
+    '2026-08-01 00:00:00+00',
+    '2026-12-15 23:59:59+00',
+    '2026-08-01 00:00:00+00',
+    '2026-09-30 23:59:59+00',
+    '2026-09-01 00:00:00+00',
+    '2026-12-10 23:59:59+00',
+    'Abierto',
+    TRUE,
+    'c2222222-2222-2222-2222-222222222222'
+)
+ON CONFLICT ("codigo") DO NOTHING;

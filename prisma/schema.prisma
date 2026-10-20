@@ -146,6 +146,7 @@ model User {
   evaluationsGiven        Evaluation[]            @relation("EvaluatorUser")
   tutorAssignments        TutorAssignment[]       @relation("AssignedTutor")
   tutorAssignmentsCreated TutorAssignment[]       @relation("TutorAssignmentCreator")
+  academicPeriodsCreated  AcademicPeriod[]        @relation("AcademicPeriodCreator")
 
   @@index([email])
   @@index([role])
@@ -533,4 +534,37 @@ model Attachment {
 
   @@index([entidadTipo, entidadId])
   @@map("archivos_adjuntos")
+}
+
+// ------------------------------------------------------------------------------
+// HU05 / CU02: PARAMETRIZACIÓN DE PERIODOS ACADÉMICOS Y ELEGIBILIDAD
+// Entidad BD: periodos_academicos (Restricción SQL: chk_fechas_periodo)
+// ------------------------------------------------------------------------------
+
+model AcademicPeriod {
+  id                  String    @id @default(uuid())
+  code                String    @unique @map("codigo")
+  name                String    @map("nombre")
+  description         String?   @map("descripcion")
+  startDate           DateTime  @map("fecha_inicio")
+  endDate             DateTime  @map("fecha_fin")
+  vacanciesStartDate  DateTime? @map("fecha_inicio_convocatorias")
+  vacanciesEndDate    DateTime? @map("fecha_fin_convocatorias")
+  reportsStartDate    DateTime? @map("fecha_inicio_informes")
+  reportsEndDate      DateTime? @map("fecha_fin_informes")
+  status              String    @default("Abierto") @map("estado")
+  isActive            Boolean   @default(true) @map("activo")
+  createdById         String?   @map("creado_por_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  // Relaciones
+  createdBy           User?     @relation("AcademicPeriodCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([code])
+  @@index([status])
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("periodos_academicos")
 }
