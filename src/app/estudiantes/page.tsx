@@ -54,6 +54,23 @@ export default function EstudiantesPage() {
   const [evaluatorError, setEvaluatorError] = useState<string | null>(null);
   const [evaluatorSuccess, setEvaluatorSuccess] = useState<string | null>(null);
 
+  // ============================================================================
+  // HU13 / CU13 - Modal de Formalización de la Práctica Empresarial (Coordinador)
+  // ============================================================================
+  const [selectedStudentForFormalization, setSelectedStudentForFormalization] = useState<UserResponseDTO | null>(null);
+  const [isLoadingFormalizationDetails, setIsLoadingFormalizationDetails] = useState(false);
+  const [availableTeachers, setAvailableTeachers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [availableExternalTutors, setAvailableExternalTutors] = useState<Array<{ id: string; name: string; email: string; cargo?: string }>>([]);
+  const [formalizationTeacherId, setFormalizationTeacherId] = useState<string>('');
+  const [formalizationTutorId, setFormalizationTutorId] = useState<string>('');
+  const [formalizationWorkPlanStatus, setFormalizationWorkPlanStatus] = useState<string>('Aprobado');
+  const [formalizationPeriod, setFormalizationPeriod] = useState<string>('2026-1');
+  const [formalizationObjectives, setFormalizationObjectives] = useState<string>('');
+  const [formalizationNotes, setFormalizationNotes] = useState<string>('');
+  const [isSubmittingFormalization, setIsSubmittingFormalization] = useState(false);
+  const [formalizationError, setFormalizationError] = useState<string | null>(null);
+  const [formalizationSuccess, setFormalizationSuccess] = useState<string | null>(null);
+
   // Cargar usuario autenticado
   useEffect(() => {
     fetch('/api/v1/auth/me')
@@ -201,6 +218,107 @@ export default function EstudiantesPage() {
       setEvaluatorError('Error de conexión al asignar el evaluador directo.');
     } finally {
       setIsAssigningEvaluator(false);
+    }
+  };
+
+  // Abrir formulario de Formalización de la Práctica Empresarial (HU13 / CU13)
+  const handleOpenFormalizationModal = async (student: UserResponseDTO) => {
+    if (!student.activePractice?.id) return;
+    setSelectedStudentForFormalization(student);
+    setFormalizationTeacherId(student.activePractice.teacherId || '');
+    setFormalizationTutorId(student.activePractice.tutorId || '');
+    setFormalizationWorkPlanStatus(student.activePractice.workPlanStatus || 'Aprobado');
+    setFormalizationPeriod(student.activePractice.academicPeriod || '2026-1');
+    setFormalizationObjectives('');
+    setFormalizationNotes('');
+    setFormalizationError(null);
+    setFormalizationSuccess(null);
+    setIsLoadingFormalizationDetails(true);
+
+    try {
+      const res = await fetch(`/api/v1/practicas/${student.activePractice.id}/formalizar`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const details = data.data;
+        setAvailableTeachers(details.availableTeachers || []);
+        setAvailableExternalTutors(details.availableExternalTutors || []);
+        if (details.teacherId) setFormalizationTeacherId(details.teacherId);
+        else if (details.availableTeachers?.length > 0) {
+          setFormalizationTeacherId(details.availableTeachers[0].id);
+        }
+        if (details.tutorId) setFormalizationTutorId(details.tutorId);
+        else if (details.availableExternalTutors?.length > 0) {
+          setFormalizationTutorId(details.availableExternalTutors[0].id);
+        }
+        if (details.workPlan?.estado) {
+          setFormalizationWorkPlanStatus(details.workPlan.estado);
+        }
+        if (details.workPlan?.objectives) {
+          setFormalizationObjectives(details.workPlan.objectives);
+        }
+        if (details.academicPeriod) {
+          setFormalizationPeriod(details.academicPeriod);
+        }
+      }
+    } catch (e) {
+      console.error('Error cargando detalles de formalización:', e);
+    } finally {
+      setIsLoadingFormalizationDetails(false);
+    }
+  };
+
+  // Confirmar Formalización de la Práctica Empresarial (HU13 / CU13)
+  const handleConfirmFormalization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForFormalization?.activePractice?.id) return;
+
+    setIsSubmittingFormalization(true);
+    setFormalizationError(null);
+    setFormalizationSuccess(null);
+
+    try {
+      const res = await fetch(
+        `/api/v1/practicas/${selectedStudentForFormalization.activePractice.id}/formalizar`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId: selectedStudentForFormalization.id,
+            companyId: selectedStudentForFormalization.activePractice.companyId,
+            teacherId: formalizationTeacherId || null,
+            tutorId: formalizationTutorId || null,
+            estadoPlanTrabajo: formalizationWorkPlanStatus,
+            periodoLectivo: formalizationPeriod,
+            estado: 'Formalizada',
+            planTrabajo: {
+              estado: formalizationWorkPlanStatus,
+              objetivos:
+                formalizationObjectives ||
+                'Desarrollar las actividades del plan de formación práctica empresarial aprobado.',
+            },
+            observaciones:
+              formalizationNotes ||
+              'Legalización y formalización oficial del inicio de la práctica empresarial (CU13)',
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setFormalizationError(
+          data.error?.message || 'Error al emitir la formalización de la práctica empresarial.'
+        );
+        return;
+      }
+
+      setFormalizationSuccess(
+        data.message || 'Práctica empresarial formalizada exitosamente con estado "Formalizada".'
+      );
+      loadStudents();
+    } catch (err) {
+      console.error(err);
+      setFormalizationError('Error de conexión al confirmar la formalización de la práctica.');
+    } finally {
+      setIsSubmittingFormalization(false);
     }
   };
 
@@ -573,8 +691,19 @@ export default function EstudiantesPage() {
                             className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
                           >
                             <Users className="w-3.5 h-3.5" />
-                            <span>Formalización / Asignar Evaluador (HU09)</span>
+                            <span>Asignar Evaluador Externo (HU09)</span>
                           </button>
+
+                          {(currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenFormalizationModal(student)}
+                              className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                            >
+                              <FileCheck2 className="w-3.5 h-3.5" />
+                              <span>Formalizar Práctica Empresarial (HU13)</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -710,6 +839,177 @@ export default function EstudiantesPage() {
                         )}
                       </button>
                     </div>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: FORMALIZACIÓN DE LA PRÁCTICA EMPRESARIAL (HU13 / CU13) */}
+        {selectedStudentForFormalization && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <span>HU13 • CU13 • Legalización y Formalización de Prácticas</span>
+                  </div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Formalización Oficial de la Práctica Empresarial
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Emita el registro en <strong>practicas_formativas</strong> para{' '}
+                    <strong>{selectedStudentForFormalization.name}</strong> verificando tutor docente, tutor externo y plan de trabajo aprobado.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedStudentForFormalization(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {formalizationError && (
+                <div
+                  role="alert"
+                  className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2.5"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>{formalizationError}</span>
+                </div>
+              )}
+
+              {formalizationSuccess && (
+                <div
+                  role="status"
+                  className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-start gap-2.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{formalizationSuccess}</span>
+                </div>
+              )}
+
+              {isLoadingFormalizationDetails ? (
+                <div className="py-8 text-center text-slate-500 space-y-2">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto text-red-700" />
+                  <p className="text-xs">Verificando requisitos de formalización del estudiante...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleConfirmFormalization} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="formalize-teacher" className="text-xs font-bold text-slate-700">
+                        Tutor Docente Asignado (docentes_tutores) <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        id="formalize-teacher"
+                        value={formalizationTeacherId}
+                        onChange={(e) => setFormalizationTeacherId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                      >
+                        <option value="">-- Sin tutor docente asignado --</option>
+                        {availableTeachers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} ({t.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="formalize-tutor" className="text-xs font-bold text-slate-700">
+                        Tutor Externo Vinculado (tutores_empresariales) <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        id="formalize-tutor"
+                        value={formalizationTutorId}
+                        onChange={(e) => setFormalizationTutorId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                      >
+                        <option value="">-- Sin tutor externo vinculado --</option>
+                        {availableExternalTutors.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} — {t.cargo || 'Tutor Empresarial'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="formalize-plan-status" className="text-xs font-bold text-slate-700">
+                        Estado del Plan de Trabajo (planes_trabajo) <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        id="formalize-plan-status"
+                        value={formalizationWorkPlanStatus}
+                        onChange={(e) => setFormalizationWorkPlanStatus(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                      >
+                        <option value="Aprobado">Aprobado (Requisito cumplido)</option>
+                        <option value="Pendiente">Pendiente de aprobación</option>
+                        <option value="En Revisión">En Revisión</option>
+                        <option value="Rechazado">Rechazado</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="formalize-period" className="text-xs font-bold text-slate-700">
+                        Periodo Lectivo Vigente <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        id="formalize-period"
+                        type="text"
+                        value={formalizationPeriod}
+                        onChange={(e) => setFormalizationPeriod(e.target.value)}
+                        placeholder="Ej. 2026-1"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="formalize-objectives" className="text-xs font-bold text-slate-700">
+                      Objetivos del Plan de Trabajo Aprobado
+                    </label>
+                    <textarea
+                      id="formalize-objectives"
+                      rows={2}
+                      value={formalizationObjectives}
+                      onChange={(e) => setFormalizationObjectives(e.target.value)}
+                      placeholder="Objetivos acordados y aprobados en el plan de trabajo..."
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudentForFormalization(null)}
+                      className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingFormalization}
+                      className="px-5 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isSubmittingFormalization ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Formalizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck2 className="w-3.5 h-3.5" />
+                          <span>Confirmar Formalización (Estado: Formalizada)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </form>
               )}

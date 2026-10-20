@@ -286,17 +286,18 @@ SELECT
     "deleted_at"
 FROM "applications";
 
--- Tabla: practices (Ciclo de Vida de Práctica y Máquina de Estados)
+-- Tabla: practices (Ciclo de Vida de Práctica, Máquina de Estados y Formalización HU13 / CU13)
 CREATE TABLE IF NOT EXISTS "practices" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "application_id" UUID UNIQUE REFERENCES "applications"("id") ON DELETE RESTRICT,
     "student_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
     "company_id" UUID NOT NULL REFERENCES "companies"("id") ON DELETE RESTRICT,
     "vacancy_id" UUID REFERENCES "vacancies"("id") ON DELETE SET NULL,
-    "teacher_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
-    "tutor_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
+    "teacher_id" UUID,
+    "tutor_id" UUID,
     "director_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
     "current_status" "PracticeStatus" NOT NULL DEFAULT 'ASPIRANTE',
+    "academic_period" VARCHAR(50) DEFAULT '2026-1',
     "arl_support_url" TEXT,
     "arl_validated_at" TIMESTAMPTZ,
     "arl_validated_by_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
@@ -309,8 +310,25 @@ CREATE TABLE IF NOT EXISTS "practices" (
     "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "deleted_at" TIMESTAMPTZ
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "fk_practica_docente" FOREIGN KEY ("teacher_id") REFERENCES "users"("id") ON DELETE SET NULL,
+    CONSTRAINT "fk_practica_tutor_ext" FOREIGN KEY ("tutor_id") REFERENCES "users"("id") ON DELETE SET NULL,
+    CONSTRAINT "chk_estado_practica" CHECK (
+        "current_status"::text IN (
+            'En Trámite', 'Formalizada', 'En Curso', 'Finalizada', 'Cancelada',
+            'ASPIRANTE', 'POSTULADO', 'PRESENTADO_A_EMPRESA', 'REUBICACION_PENDIENTE',
+            'ACEPTADO_ARL_PENDIENTE', 'ASIGNADO_FORMALMENTE', 'PLAN_EN_REVISION',
+            'PRACTICA_EN_EJECUCION', 'EVALUACION_PENDIENTE', 'FINALIZADA', 'CERRADA'
+        )
+    )
 );
+
+-- Restricción de unicidad por estudiante y periodo lectivo para prácticas activas ("Formalizada" o "En Curso") - HU13 Criterio 3
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_estudiante_practica_periodo"
+ON "practices" ("student_id", COALESCE("academic_period", '2026-1'))
+WHERE "current_status"::text IN (
+    'Formalizada', 'En Curso', 'ASIGNADO_FORMALMENTE', 'PRACTICA_EN_EJECUCION'
+) AND "deleted_at" IS NULL AND "is_active" = TRUE;
 
 -- Vista conceptual asignaciones_practica para CU09
 CREATE OR REPLACE VIEW "asignaciones_practica" AS
@@ -344,10 +362,10 @@ CREATE TABLE IF NOT EXISTS "practice_status_history" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Tabla: work_plans (Planes de Trabajo y Aprobación Dual - RN-07, RN-08)
+-- Tabla: work_plans (Planes de Trabajo y Aprobación Dual - RN-07, RN-08, HU13)
 CREATE TABLE IF NOT EXISTS "work_plans" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "practice_id" UUID NOT NULL UNIQUE REFERENCES "practices"("id") ON DELETE CASCADE,
+    "practice_id" UUID NOT NULL UNIQUE,
     "objectives" TEXT NOT NULL,
     "methodology" TEXT NOT NULL,
     "schedule" JSONB NOT NULL,
@@ -361,8 +379,100 @@ CREATE TABLE IF NOT EXISTS "work_plans" (
     "teacher_approved_by_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
     "feedback" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT "fk_practica_plan_trabajo" FOREIGN KEY ("practice_id") REFERENCES "practices"("id") ON DELETE CASCADE
 );
+
+-- Vistas conceptuales para HU13 / CU13 (estudiantes, docentes_tutores, planes_trabajo, practicas_formativas)
+CREATE OR REPLACE VIEW "estudiantes" AS
+SELECT
+    "id",
+    "id" AS "usuario_id",
+    "student_code" AS "codigo_estudiantil",
+    "name" AS "nombre",
+    "email" AS "correo",
+    "document_type" AS "tipo_documento",
+    "document_number" AS "documento",
+    "phone" AS "telefono",
+    "program" AS "programa",
+    "academic_average" AS "promedio_academico",
+    "approved_credits" AS "creditos_aprobados",
+    "status" AS "estado",
+    "is_active" AS "activo",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion"
+FROM "users"
+WHERE "role" = 'ESTUDIANTE' AND "deleted_at" IS NULL;
+
+CREATE OR REPLACE VIEW "docentes_tutores" AS
+SELECT
+    "id",
+    "id" AS "usuario_id",
+    "name" AS "nombre",
+    "email" AS "correo",
+    "document_type" AS "tipo_documento",
+    "document_number" AS "documento",
+    "phone" AS "telefono",
+    "program" AS "programa",
+    CASE WHEN "status" = 'ACTIVO' AND "is_active" = TRUE THEN 'Activo' ELSE 'Inactivo' END AS "estado",
+    "status",
+    "is_active",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion"
+FROM "users"
+WHERE "role" = 'DOCENTE_PRACTICA' AND "deleted_at" IS NULL;
+
+CREATE OR REPLACE VIEW "planes_trabajo" AS
+SELECT
+    "id",
+    "practice_id" AS "practica_id",
+    "objectives" AS "objetivos",
+    "methodology" AS "metodologia",
+    "schedule" AS "cronograma",
+    "document_url" AS "documento_url",
+    CASE
+        WHEN "status" = 'APROBADO_DUAL' OR ("tutor_approved" = TRUE AND "teacher_approved" = TRUE) THEN 'Aprobado'
+        WHEN "status" = 'RECHAZADO' THEN 'Rechazado'
+        ELSE 'Pendiente'
+    END AS "estado",
+    "status" AS "estado_interno",
+    "tutor_approved" AS "aprobado_tutor_externo",
+    "teacher_approved" AS "aprobado_tutor_docente",
+    "feedback" AS "observaciones",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_modificacion"
+FROM "work_plans";
+
+CREATE OR REPLACE VIEW "practicas_formativas" AS
+SELECT
+    p."id",
+    p."student_id" AS "estudiante_id",
+    p."company_id" AS "empresa_id",
+    p."vacancy_id" AS "plaza_id",
+    p."teacher_id" AS "docente_tutor_id",
+    p."tutor_id" AS "tutor_externo_id",
+    wp."id" AS "plan_trabajo_id",
+    p."director_id" AS "coordinador_id",
+    COALESCE(p."academic_period", '2026-1') AS "periodo_lectivo",
+    CASE
+        WHEN p."current_status" = 'ASIGNADO_FORMALMENTE' THEN 'Formalizada'
+        WHEN p."current_status" IN ('PRACTICA_EN_EJECUCION', 'EVALUACION_PENDIENTE') THEN 'En Curso'
+        WHEN p."current_status" IN ('FINALIZADA', 'CERRADA') THEN 'Finalizada'
+        WHEN p."current_status" = 'REUBICACION_PENDIENTE' OR p."is_active" = FALSE THEN 'Cancelada'
+        ELSE 'En Trámite'
+    END AS "estado",
+    p."current_status" AS "estado_interno",
+    p."start_date" AS "fecha_inicio",
+    p."end_date" AS "fecha_fin",
+    p."total_hours_required" AS "horas_requeridas",
+    p."total_hours_completed" AS "horas_completadas",
+    p."arl_support_url",
+    p."is_active" AS "activo",
+    p."created_at" AS "fecha_creacion",
+    p."updated_at" AS "fecha_modificacion",
+    p."deleted_at"
+FROM "practices" p
+LEFT JOIN "work_plans" wp ON wp."practice_id" = p."id";
 
 -- Tabla: follow_up_visits (Visitas de supervisión docente)
 CREATE TABLE IF NOT EXISTS "follow_up_visits" (
