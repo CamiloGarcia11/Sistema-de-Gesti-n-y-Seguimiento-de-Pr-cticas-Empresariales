@@ -859,3 +859,157 @@ export interface RadicarInformeResultDTO {
   mensaje: string;
 }
 
+
+// ------------------------------------------------------------------------------
+// DTOs y Dominio de Apertura y Configuración de Periodos Lectivos (HU05 / CU02)
+// Entidad BD: periodos_academicos (Restricción SQL: chk_fechas_periodo)
+// ------------------------------------------------------------------------------
+
+export type PeriodoAcademicoEstadoDomain =
+  | 'Abierto'
+  | 'En Configuración'
+  | 'Cerrado';
+
+export const DOMAIN_ACADEMIC_PERIOD_STATUSES: readonly PeriodoAcademicoEstadoDomain[] = [
+  'Abierto',
+  'En Configuración',
+  'Cerrado',
+] as const;
+
+export interface CreateAcademicPeriodDTO {
+  // Campos en español (Dominio HU05 / CU02) y en inglés (API estándar)
+  codigo?: string;
+  code?: string;
+  periodo?: string;
+  nombre?: string;
+  name?: string;
+  descripcion?: string;
+  description?: string;
+
+  // Fechas de vigencia del periodo lectivo (chk_fechas_periodo: fecha_fin > fecha_inicio)
+  fecha_inicio?: string | Date;
+  fechaInicio?: string | Date;
+  startDate?: string | Date;
+
+  fecha_fin?: string | Date;
+  fechaFin?: string | Date;
+  endDate?: string | Date;
+
+  // Ventana temporal para convocatorias (opcional)
+  fecha_inicio_convocatorias?: string | Date | null;
+  fechaInicioConvocatorias?: string | Date | null;
+  vacanciesStartDate?: string | Date | null;
+
+  fecha_fin_convocatorias?: string | Date | null;
+  fechaFinConvocatorias?: string | Date | null;
+  vacanciesEndDate?: string | Date | null;
+
+  // Ventana temporal para informes (opcional)
+  fecha_inicio_informes?: string | Date | null;
+  fechaInicioInformes?: string | Date | null;
+  reportsStartDate?: string | Date | null;
+
+  fecha_fin_informes?: string | Date | null;
+  fechaFinInformes?: string | Date | null;
+  reportsEndDate?: string | Date | null;
+
+  // Estado y vigencia
+  estado?: string;
+  status?: string;
+  activo?: boolean;
+  isActive?: boolean;
+}
+
+export interface UpdateAcademicPeriodDTO {
+  codigo?: string;
+  code?: string;
+  nombre?: string;
+  name?: string;
+  descripcion?: string | null;
+  description?: string | null;
+
+  fecha_inicio?: string | Date;
+  fechaInicio?: string | Date;
+  startDate?: string | Date;
+
+  fecha_fin?: string | Date;
+  fechaFin?: string | Date;
+  endDate?: string | Date;
+
+  fecha_inicio_convocatorias?: string | Date | null;
+  fechaInicioConvocatorias?: string | Date | null;
+  vacanciesStartDate?: string | Date | null;
+
+  fecha_fin_convocatorias?: string | Date | null;
+  fechaFinConvocatorias?: string | Date | null;
+  vacanciesEndDate?: string | Date | null;
+
+  fecha_inicio_informes?: string | Date | null;
+  fechaInicioInformes?: string | Date | null;
+  reportsStartDate?: string | Date | null;
+
+  fecha_fin_informes?: string | Date | null;
+  fechaFinInformes?: string | Date | null;
+  reportsEndDate?: string | Date | null;
+
+  estado?: string;
+  status?: string;
+  activo?: boolean;
+  isActive?: boolean;
+}
+
+export interface AcademicPeriodResponseDTO {
+  id: string;
+  codigo: string;
+  code: string;
+  nombre: string;
+  name: string;
+  descripcion: string | null;
+  description: string | null;
+  fecha_inicio: Date;
+  fechaInicio: Date;
+  startDate: Date;
+  fecha_fin: Date;
+  fechaFin: Date;
+  endDate: Date;
+  fecha_inicio_convocatorias: Date | null;
+  fechaInicioConvocatorias: Date | null;
+  vacanciesStartDate: Date | null;
+  fecha_fin_convocatorias: Date | null;
+  fechaFinConvocatorias: Date | null;
+  vacanciesEndDate: Date | null;
+  fecha_inicio_informes: Date | null;
+  fechaInicioInformes: Date | null;
+  reportsStartDate: Date | null;
+  fecha_fin_informes: Date | null;
+  fechaFinInformes: Date | null;
+  reportsEndDate: Date | null;
+  estado: PeriodoAcademicoEstadoDomain;
+  status: PeriodoAcademicoEstadoDomain;
+  activo: boolean;
+  isActive: boolean;
+  enVigencia: boolean;
+  isCurrentlyValid: boolean;
+  creadoPorId: string | null;
+  createdById: string | null;
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+    role?: Role;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+  message?: string;
+}
+
+export interface AcademicPeriodFilterDTO {
+  search?: string;
+  estado?: string;
+  status?: string;
+  activo?: boolean;
+  isActive?: boolean;
+  onlyVigente?: boolean;
+  page?: number;
+  limit?: number;
+}

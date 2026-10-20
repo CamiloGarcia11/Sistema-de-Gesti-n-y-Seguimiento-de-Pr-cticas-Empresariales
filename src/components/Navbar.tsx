@@ -4,7 +4,17 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2, GraduationCap, BookOpen } from 'lucide-react';
+import {
+  Shield,
+  User,
+  LogOut,
+  Building2,
+  Briefcase,
+  CheckCircle2,
+  GraduationCap,
+  BookOpen,
+  CalendarRange,
+} from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -57,7 +67,7 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
     <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
       {/* Top red institutional bar */}
       <div className="h-1.5 bg-gradient-to-r from-red-700 via-red-600 to-red-800 w-full" />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo & Brand */}
@@ -113,6 +123,16 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                 <Building2 className="w-3.5 h-3.5" />
                 <span>Empresas</span>
               </Link>
+
+              {(currentUser.role === 'DIRECTOR_PROGRAMA' || currentUser.role === 'ADMIN') && (
+                <Link
+                  href="/periodos"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <CalendarRange className="w-3.5 h-3.5" />
+                  <span>Periodos Lectivos</span>
+                </Link>
+              )}
 
               {currentUser.role === 'ESTUDIANTE' && (
                 <Link

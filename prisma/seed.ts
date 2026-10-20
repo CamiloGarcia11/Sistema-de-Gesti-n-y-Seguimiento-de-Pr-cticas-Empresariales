@@ -23,6 +23,8 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.company.deleteMany();
   await prisma.studyPlan.deleteMany();
+  await prisma.academicPeriod.deleteMany();
+  await prisma.studyPlan.deleteMany();
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
   await prisma.studyPlan.create({
@@ -131,6 +133,41 @@ async function main() {
   });
 
   console.log('✅ Usuarios para los 5 roles creados con contraseña: Password123!');
+
+  // 3.5 Crear Periodos Lectivos Iniciales (HU05 / CU02)
+  await prisma.academicPeriod.createMany({
+    data: [
+      {
+        code: '2026-1',
+        name: 'Primer Semestre Académico 2026',
+        description: 'Periodo lectivo para convocatorias e informes del primer semestre 2026.',
+        startDate: new Date('2026-02-01'),
+        endDate: new Date('2026-06-30'),
+        vacanciesStartDate: new Date('2026-02-01'),
+        vacanciesEndDate: new Date('2026-03-15'),
+        reportsStartDate: new Date('2026-03-01'),
+        reportsEndDate: new Date('2026-06-25'),
+        status: 'Cerrado',
+        isActive: false,
+        createdById: director.id,
+      },
+      {
+        code: '2026-2',
+        name: 'Segundo Semestre Académico 2026',
+        description: 'Periodo lectivo vigente para convocatorias e informes del segundo semestre 2026.',
+        startDate: new Date('2026-08-01'),
+        endDate: new Date('2026-12-15'),
+        vacanciesStartDate: new Date('2026-08-01'),
+        vacanciesEndDate: new Date('2026-09-30'),
+        reportsStartDate: new Date('2026-09-01'),
+        reportsEndDate: new Date('2026-12-10'),
+        status: 'Abierto',
+        isActive: true,
+        createdById: director.id,
+      },
+    ],
+  });
+  console.log('✅ Periodos lectivos iniciales (2026-1 y 2026-2) creados.');
 
   // 4. Crear Vacante
   const vacancy = await prisma.vacancy.create({
