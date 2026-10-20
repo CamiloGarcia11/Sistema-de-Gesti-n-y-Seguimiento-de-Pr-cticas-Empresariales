@@ -540,9 +540,6 @@ export default function EmpresasPage() {
                         }`}
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400">
-                      Incluya dígito de verificación si aplica (ej. 900.123.456-1). Restricción estricta de unicidad.
-                    </p>
                   </div>
 
                   {/* Razón Social */}
@@ -559,7 +556,6 @@ export default function EmpresasPage() {
                       required
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600 transition-all"
                     />
-                    <p className="text-[10px] text-slate-400">Nombre registrado ante Cámara de Comercio.</p>
                   </div>
                 </div>
 
