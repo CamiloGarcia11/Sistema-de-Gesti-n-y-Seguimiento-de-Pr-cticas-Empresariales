@@ -25,15 +25,18 @@ import {
   Layers,
   ChevronRight,
   FileSpreadsheet,
+  Users,
+  UserPlus,
+  IdCard,
 } from 'lucide-react';
-import { CompanyResponseDTO, UserResponseDTO } from '@/types';
+import { CompanyResponseDTO, CompanyTutorResponseDTO, UserResponseDTO } from '@/types';
 
 export default function EmpresasPage() {
   const [currentUser, setCurrentUser] = useState<UserResponseDTO | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Tab activo: 'radicar' o 'directorio'
-  const [activeTab, setActiveTab] = useState<'radicar' | 'directorio'>('radicar');
+  // Tab activo: 'radicar', 'directorio' o 'tutores' (HU09 / CU09)
+  const [activeTab, setActiveTab] = useState<'radicar' | 'directorio' | 'tutores'>('radicar');
 
   // Listado de empresas
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
@@ -42,7 +45,7 @@ export default function EmpresasPage() {
   const [cityFilter, setCityFilter] = useState('');
   const [copiedNit, setCopiedNit] = useState<string | null>(null);
 
-  // Formulario de radicación de empresa
+  // Formulario de radicación de empresa (HU07)
   const [formData, setFormData] = useState({
     nit: '',
     businessName: '',
@@ -61,10 +64,33 @@ export default function EmpresasPage() {
     company?: CompanyResponseDTO | null;
   }>({ checked: false, exists: false });
 
-  // Estados de envío y feedback
+  // Estados de envío y feedback (HU07)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<{ message: string; code?: string; field?: string } | null>(null);
   const [formSuccess, setFormSuccess] = useState<CompanyResponseDTO | null>(null);
+
+  // ============================================================================
+  // HU09 / CU09 - Vinculación de Tutores Empresariales (Supervisores Inmediatos)
+  // ============================================================================
+  const [selectedTutorCompanyId, setSelectedTutorCompanyId] = useState<string>('');
+  const [companyTutors, setCompanyTutors] = useState<CompanyTutorResponseDTO[]>([]);
+  const [isLoadingTutors, setIsLoadingTutors] = useState(false);
+  const [tutorForm, setTutorForm] = useState({
+    nombre: '',
+    cargo: '',
+    correo: '',
+    tipoDocumento: 'CC',
+    documento: '',
+    telefono: '',
+  });
+  const [isSubmittingTutor, setIsSubmittingTutor] = useState(false);
+  const [tutorError, setTutorError] = useState<{
+    message: string;
+    code?: string;
+    constraint?: string;
+    field?: string;
+  } | null>(null);
+  const [tutorSuccess, setTutorSuccess] = useState<CompanyTutorResponseDTO | null>(null);
 
   // Cargar usuario autenticado
   useEffect(() => {
@@ -73,6 +99,9 @@ export default function EmpresasPage() {
       .then((data) => {
         if (data.success && data.data) {
           setCurrentUser(data.data);
+          if (data.data.companyId) {
+            setSelectedTutorCompanyId(data.data.companyId);
+          }
         }
       })
       .catch((e) => console.error(e))
@@ -91,18 +120,118 @@ export default function EmpresasPage() {
       const data = await res.json();
 
       if (data.success && data.data) {
-        setCompanies(data.data.items || []);
+        const list: CompanyResponseDTO[] = data.data.items || [];
+        setCompanies(list);
+        if (!selectedTutorCompanyId && list.length > 0) {
+          setSelectedTutorCompanyId(list[0].id);
+        }
       }
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoadingList(false);
     }
-  }, [searchTerm, cityFilter]);
+  }, [searchTerm, cityFilter, selectedTutorCompanyId]);
 
   useEffect(() => {
     loadCompanies();
   }, [loadCompanies]);
+
+  // Cargar tutores empresariales vinculados a la empresa seleccionada (HU09)
+  const loadCompanyTutors = useCallback(async (companyIdToLoad?: string) => {
+    const targetId = companyIdToLoad ?? selectedTutorCompanyId;
+    setIsLoadingTutors(true);
+    try {
+      const params = new URLSearchParams();
+      if (targetId) params.append('companyId', targetId);
+      params.append('onlyActive', 'true');
+
+      const res = await fetch(`/api/v1/tutores?${params.toString()}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setCompanyTutors(data.data.items || []);
+      } else {
+        setCompanyTutors([]);
+      }
+    } catch (e) {
+      console.error('Error cargando tutores empresariales:', e);
+      setCompanyTutors([]);
+    } finally {
+      setIsLoadingTutors(false);
+    }
+  }, [selectedTutorCompanyId]);
+
+  useEffect(() => {
+    if (activeTab === 'tutores') {
+      loadCompanyTutors();
+    }
+  }, [activeTab, selectedTutorCompanyId, loadCompanyTutors]);
+
+  // Envío del formulario de Vinculación de Supervisor Inmediato (HU09 / CU09)
+  const handleRegisterTutor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTutorError(null);
+    setTutorSuccess(null);
+
+    const targetCompanyId = selectedTutorCompanyId || currentUser?.companyId || '';
+    if (!targetCompanyId) {
+      setTutorError({
+        message: 'Debe seleccionar una empresa receptora activa para vincular al supervisor.',
+        field: 'companyId',
+      });
+      return;
+    }
+
+    setIsSubmittingTutor(true);
+    try {
+      const res = await fetch('/api/v1/tutores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: targetCompanyId,
+          nombre: tutorForm.nombre,
+          cargo: tutorForm.cargo,
+          correo: tutorForm.correo,
+          tipoDocumento: tutorForm.tipoDocumento,
+          documento: tutorForm.documento,
+          telefono: tutorForm.telefono,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setTutorError({
+          message:
+            data.error?.message ||
+            'El correo electrónico no es válido o ya se encuentra en uso.',
+          code: data.error?.code,
+          constraint: data.error?.details?.constraint,
+          field: data.error?.details?.field,
+        });
+        return;
+      }
+
+      setTutorSuccess(data.data);
+      setTutorForm({
+        nombre: '',
+        cargo: '',
+        correo: '',
+        tipoDocumento: 'CC',
+        documento: '',
+        telefono: '',
+      });
+      loadCompanyTutors(targetCompanyId);
+      loadCompanies();
+    } catch (err) {
+      console.error(err);
+      setTutorError({
+        message: 'Error de conexión al intentar registrar el supervisor empresarial.',
+      });
+    } finally {
+      setIsSubmittingTutor(false);
+    }
+  };
 
   // Verificar NIT en tiempo real con debounce
   const handleNitChange = (val: string) => {
@@ -269,7 +398,7 @@ export default function EmpresasPage() {
 
             {/* Selector de pestañas */}
             {canRegisterCompany && (
-              <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-start md:self-center">
+              <div className="flex flex-wrap bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-start md:self-center gap-1">
                 <button
                   onClick={() => setActiveTab('radicar')}
                   className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
@@ -280,6 +409,17 @@ export default function EmpresasPage() {
                 >
                   <PlusCircle className="w-4 h-4" />
                   <span>Radicar Empresa</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('tutores')}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'tutores'
+                      ? 'bg-red-700 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Vincular Tutores (HU09)</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('directorio')}
@@ -740,14 +880,31 @@ export default function EmpresasPage() {
 
                         {/* Acciones */}
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => copyToClipboard(company.id)}
-                            title="Copiar ID de Empresa"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 rounded-lg border border-slate-200 hover:border-red-200 transition-all"
-                          >
-                            <span>ID</span>
-                            <Copy className="w-3 h-3" />
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            {canRegisterCompany && (
+                              <button
+                                onClick={() => {
+                                  setSelectedTutorCompanyId(company.id);
+                                  setTutorError(null);
+                                  setTutorSuccess(null);
+                                  setActiveTab('tutores');
+                                }}
+                                title="Vincular supervisores inmediatos a esta empresa (HU09)"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-all cursor-pointer"
+                              >
+                                <UserPlus className="w-3 h-3" />
+                                <span>Tutores ({company.tutorsCount ?? 0})</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(company.id)}
+                              title="Copiar ID de Empresa"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 rounded-lg border border-slate-200 hover:border-red-200 transition-all"
+                            >
+                              <span>ID</span>
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -755,6 +912,311 @@ export default function EmpresasPage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* PESTAÑA 3: VINCULACIÓN DE TUTORES EMPRESARIALES (HU09 / CU09) */}
+        {activeTab === 'tutores' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Formulario de Registro y Vinculación del Supervisor Inmediato */}
+            <div className="lg:col-span-1 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
+              <div className="border-b border-slate-100 pb-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                  <span>CU09 • Evaluación Directa</span>
+                </div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-red-700" />
+                  <span>Vincular Supervisor Inmediato</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Asocie supervisores inmediatos a la empresa para que ejerzan como evaluadores directos del desempeño del estudiante.
+                </p>
+              </div>
+
+              {/* Alerta de Error (Criterio 2: chk_correo_tutor_valido / uq_tutor_email / uq_tutor_documento_empresa) */}
+              {tutorError && (
+                <div
+                  role="alert"
+                  className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start gap-2.5"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold">Validación de Registro (400 Bad Request)</p>
+                    <p className="text-amber-800">{tutorError.message}</p>
+                    {tutorError.constraint && (
+                      <span className="inline-block font-mono text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
+                        Constraint: {tutorError.constraint}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de Éxito (Criterio 1: 201 Created con estado "Activo") */}
+              {tutorSuccess && (
+                <div
+                  role="status"
+                  className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 space-y-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold">¡Supervisor Vinculado Exitosamente! (201 Created)</p>
+                      <p className="text-emerald-800">
+                        <strong>{tutorSuccess.nombre}</strong> ({tutorSuccess.cargo}) ha sido asociado en{' '}
+                        <code className="font-mono">tutores_empresariales</code> con estado{' '}
+                        <span className="font-bold underline">{tutorSuccess.estado}</span> y ya está disponible en el selector de evaluadores directos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleRegisterTutor} className="space-y-4">
+                {/* Selector de Empresa Receptora */}
+                <div className="space-y-1.5">
+                  <label htmlFor="tutorCompanyId" className="text-xs font-bold text-slate-700">
+                    Empresa Receptora <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    id="tutorCompanyId"
+                    value={selectedTutorCompanyId}
+                    onChange={(e) => {
+                      setSelectedTutorCompanyId(e.target.value);
+                      setTutorError(null);
+                      setTutorSuccess(null);
+                    }}
+                    disabled={currentUser?.role === 'TUTOR_EMPRESARIAL' && !!currentUser?.companyId}
+                    required
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                  >
+                    <option value="">Seleccione una empresa activa...</option>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.businessName} (NIT: {c.nit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nombre Completo del Supervisor */}
+                <div className="space-y-1.5">
+                  <label htmlFor="tutorNombre" className="text-xs font-bold text-slate-700">
+                    Nombre Completo del Supervisor <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="tutorNombre"
+                    type="text"
+                    placeholder="Ej. Ing. Carolina Martínez"
+                    value={tutorForm.nombre}
+                    onChange={(e) => setTutorForm({ ...tutorForm, nombre: e.target.value })}
+                    required
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                  />
+                </div>
+
+                {/* Cargo del Supervisor */}
+                <div className="space-y-1.5">
+                  <label htmlFor="tutorCargo" className="text-xs font-bold text-slate-700">
+                    Cargo en la Organización <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="tutorCargo"
+                    type="text"
+                    placeholder="Ej. Líder Técnico de Ingeniería / Jefe de TI"
+                    value={tutorForm.cargo}
+                    onChange={(e) => setTutorForm({ ...tutorForm, cargo: e.target.value })}
+                    required
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                  />
+                </div>
+
+                {/* Correo Institucional / Corporativo */}
+                <div className="space-y-1.5">
+                  <label htmlFor="tutorCorreo" className="text-xs font-bold text-slate-700">
+                    Correo Electrónico Institucional <span className="text-red-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="tutorCorreo"
+                      type="text"
+                      placeholder="supervisor@empresa.co"
+                      value={tutorForm.correo}
+                      onChange={(e) => setTutorForm({ ...tutorForm, correo: e.target.value })}
+                      required
+                      className={`w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 ${
+                        tutorError?.field === 'email'
+                          ? 'border-amber-400 focus:ring-amber-200'
+                          : 'border-slate-300 focus:ring-red-200 focus:border-red-600'
+                      }`}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Validado por <code className="font-mono">chk_correo_tutor_valido</code> y <code className="font-mono">uq_tutor_email</code>.
+                  </p>
+                </div>
+
+                {/* Documento de Identidad */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="tutorTipoDoc" className="text-xs font-bold text-slate-700">
+                      Tipo Doc.
+                    </label>
+                    <select
+                      id="tutorTipoDoc"
+                      value={tutorForm.tipoDocumento}
+                      onChange={(e) => setTutorForm({ ...tutorForm, tipoDocumento: e.target.value })}
+                      className="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900"
+                    >
+                      <option value="CC">CC</option>
+                      <option value="CE">CE</option>
+                      <option value="PA">PA</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label htmlFor="tutorDocumento" className="text-xs font-bold text-slate-700">
+                      Número de Documento <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="tutorDocumento"
+                      type="text"
+                      placeholder="Ej. 1090456789"
+                      value={tutorForm.documento}
+                      onChange={(e) => setTutorForm({ ...tutorForm, documento: e.target.value })}
+                      required
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Teléfono */}
+                <div className="space-y-1.5">
+                  <label htmlFor="tutorTelefono" className="text-xs font-bold text-slate-700">
+                    Teléfono de Contacto (Opcional)
+                  </label>
+                  <input
+                    id="tutorTelefono"
+                    type="text"
+                    placeholder="Ej. 315 234 5678"
+                    value={tutorForm.telefono}
+                    onChange={(e) => setTutorForm({ ...tutorForm, telefono: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-600"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingTutor}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-red-700/20 transition-all cursor-pointer"
+                >
+                  {isSubmittingTutor ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Vinculando Supervisor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Confirmar Vinculación de Supervisor</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* Listado de Supervisores Vinculados a la Empresa (Evaluadores Directos Disponibles) */}
+            <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-red-700" />
+                    <span>Supervisores Inmediatos Vinculados (Evaluadores Directos)</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Supervisores con estado <strong>Activo</strong> habilitados en el selector de formalización y seguimiento de prácticas.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/estudiantes"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all"
+                  >
+                    <span>Asignar a Practicante</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    onClick={() => loadCompanyTutors()}
+                    title="Actualizar supervisores"
+                    className="p-2 text-slate-600 hover:text-red-700 hover:bg-red-50 rounded-xl border border-slate-200 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLoadingTutors ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {isLoadingTutors ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto text-red-600" />
+                  <p className="text-xs">Consultando supervisores vinculados...</p>
+                </div>
+              ) : companyTutors.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 space-y-2">
+                  <Users className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="font-bold text-sm text-slate-800">No hay supervisores vinculados para esta empresa</p>
+                  <p className="text-xs text-slate-400">
+                    Utilice el formulario izquierdo para asociar el primer supervisor inmediato como evaluador directo.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-4">Supervisor & Cargo</th>
+                        <th className="py-3 px-4">Documento</th>
+                        <th className="py-3 px-4">Correo Institucional</th>
+                        <th className="py-3 px-4">Empresa Vinculada</th>
+                        <th className="py-3 px-4 text-right">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {companyTutors.map((tutor) => (
+                        <tr key={tutor.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900">{tutor.nombre}</div>
+                            <div className="text-[11px] text-red-700 font-semibold mt-0.5 flex items-center gap-1">
+                              <Briefcase className="w-3 h-3" />
+                              <span>{tutor.cargo}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-slate-700">
+                            {tutor.tipoDocumento} {tutor.documento}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700">
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{tutor.correo}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">
+                            {tutor.company?.businessName || 'Empresa Vinculada'}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" /> {tutor.estado}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
