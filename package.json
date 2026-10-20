@@ -23,7 +23,9 @@
     "test:cu12": "npx tsx tests/cu12-preseleccion-candidatos.test.ts",
     "test:hu09": "npx tsx tests/hu09-vinculacion-tutores.test.ts",
     "test:cu09": "npx tsx tests/hu09-vinculacion-tutores.test.ts",
-    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/cu01-authentication.test.ts && npx tsx tests/hu07-company-registration.test.ts && npx tsx tests/hu-estudiante-postulacion.test.ts && npx tsx tests/hu-empleador-convocatoria.test.ts && npx tsx tests/cu12-preseleccion-candidatos.test.ts && npx tsx tests/hu09-vinculacion-tutores.test.ts"
+    "test:cu14": "npx tsx tests/cu14-entrega-informes-avance.test.ts",
+    "test:avance": "npx tsx tests/cu14-entrega-informes-avance.test.ts",
+    "test:all": "npx tsx tests/hu01-user-management.test.ts && npx tsx tests/cu01-authentication.test.ts && npx tsx tests/hu07-company-registration.test.ts && npx tsx tests/hu-estudiante-postulacion.test.ts && npx tsx tests/hu-empleador-convocatoria.test.ts && npx tsx tests/cu12-preseleccion-candidatos.test.ts && npx tsx tests/hu09-vinculacion-tutores.test.ts && npx tsx tests/cu14-entrega-informes-avance.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
