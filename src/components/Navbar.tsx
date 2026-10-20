@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2, GraduationCap } from 'lucide-react';
+import { Shield, User, LogOut, Building2, Briefcase, CheckCircle2, GraduationCap, BookOpen } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
 interface NavbarProps {
@@ -113,6 +113,16 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                 <Building2 className="w-3.5 h-3.5" />
                 <span>Empresas</span>
               </Link>
+
+              {currentUser.role === 'ESTUDIANTE' && (
+                <Link
+                  href="/estudiantes/informes"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Bitácoras e Informes</span>
+                </Link>
+              )}
 
               {currentUser.role === 'ESTUDIANTE' && (
                 <Link

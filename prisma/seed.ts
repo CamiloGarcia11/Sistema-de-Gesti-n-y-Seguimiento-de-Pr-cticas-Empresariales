@@ -94,6 +94,8 @@ async function main() {
       documentNumber: '1020304050',
       role: Role.DOCENTE_PRACTICA,
       program: 'Ingeniería de Sistemas',
+      specialty: 'Ingeniería de Software',
+      availableHours: 40,
       status: UserStatus.ACTIVO,
       isActive: true,
     },
