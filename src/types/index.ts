@@ -50,6 +50,27 @@ export type ApplicationStatus =
   | 'CANCELADO'
   | PostulacionEstadoDomain;
 
+export type PracticaFormativaEstadoDomain =
+  | 'En Trámite'
+  | 'Formalizada'
+  | 'En Curso'
+  | 'Finalizada'
+  | 'Cancelada';
+
+export const DOMAIN_PRACTICE_FORMALIZATION_STATUSES: readonly PracticaFormativaEstadoDomain[] = [
+  'En Trámite',
+  'Formalizada',
+  'En Curso',
+  'Finalizada',
+  'Cancelada',
+] as const;
+
+export type PlanTrabajoEstadoDomain =
+  | 'Pendiente'
+  | 'En Revisión'
+  | 'Aprobado'
+  | 'Rechazado';
+
 export type PracticeStatus =
   | 'ASPIRANTE'
   | 'POSTULADO'
@@ -162,13 +183,21 @@ export interface UserResponseDTO {
   activePractice?: {
     id: string;
     currentStatus: PracticeStatus;
+    estadoDomain?: PracticaFormativaEstadoDomain;
+    academicPeriod?: string | null;
     companyId?: string | null;
     companyName?: string | null;
     vacancyTitle?: string | null;
+    teacherId?: string | null;
+    teacherName?: string | null;
+    teacherEmail?: string | null;
     tutorId?: string | null;
     tutorName?: string | null;
     tutorEmail?: string | null;
     tutorCargo?: string | null;
+    workPlanId?: string | null;
+    workPlanStatus?: string | null;
+    startDate?: Date | string | null;
   } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -532,6 +561,159 @@ export interface PracticeEvaluatorAssignmentResultDTO {
   currentStatus: PracticeStatus;
   updatedAt: Date;
   message: string;
+}
+
+// ------------------------------------------------------------------------------
+// DTOs de Formalización de la Práctica Empresarial (HU13 / CU13)
+// ------------------------------------------------------------------------------
+
+export interface WorkPlanFormalizationInputDTO {
+  id?: string;
+  status?: string;
+  estado?: string;
+  objectives?: string;
+  objetivos?: string;
+  methodology?: string;
+  metodologia?: string;
+  schedule?: unknown;
+  cronograma?: unknown;
+  documentUrl?: string;
+  documentoUrl?: string;
+  tutorApproved?: boolean;
+  aprobadoTutorExterno?: boolean;
+  teacherApproved?: boolean;
+  aprobadoTutorDocente?: boolean;
+  feedback?: string;
+}
+
+export interface FormalizePracticeDTO {
+  // Identificador de práctica existente (si aplica)
+  practiceId?: string;
+  practicaId?: string;
+  id?: string;
+
+  // Estudiante (fk_practica_estudiante)
+  studentId?: string;
+  estudianteId?: string;
+
+  // Empresa receptora
+  companyId?: string;
+  empresaId?: string;
+  vacancyId?: string;
+  plazaId?: string;
+
+  // Tutor docente asignado (fk_practica_docente -> docentes_tutores)
+  teacherId?: string | null;
+  docenteTutorId?: string | null;
+  tutorDocenteId?: string | null;
+  docenteId?: string | null;
+
+  // Tutor externo vinculado (fk_practica_tutor_ext -> tutores_empresariales)
+  tutorId?: string | null;
+  tutorExternoId?: string | null;
+  tutorEmpresarialId?: string | null;
+
+  // Plan de trabajo aprobado (fk_practica_plan_trabajo -> planes_trabajo)
+  workPlanId?: string | null;
+  planTrabajoId?: string | null;
+  workPlanStatus?: string | null;
+  estadoPlanTrabajo?: string | null;
+  workPlan?: WorkPlanFormalizationInputDTO | null;
+  planTrabajo?: WorkPlanFormalizationInputDTO | null;
+
+  // Periodo lectivo vigente (uq_estudiante_practica_periodo)
+  academicPeriod?: string;
+  periodoLectivo?: string;
+  periodo?: string;
+
+  // Estado de la práctica formativa (chk_estado_practica)
+  estado?: string;
+  status?: string;
+
+  // Fechas, horas y soportes
+  startDate?: string | Date;
+  fechaInicio?: string | Date;
+  endDate?: string | Date;
+  fechaFin?: string | Date;
+  totalHoursRequired?: number;
+  horasRequeridas?: number;
+  arlSupportUrl?: string;
+  presentationLetterUrl?: string;
+  notes?: string;
+  observaciones?: string;
+}
+
+export interface FormalizePracticeResponseDTO {
+  id: string;
+  practiceId: string;
+  estudianteId: string;
+  studentId: string;
+  empresaId: string;
+  companyId: string;
+  docenteTutorId: string;
+  teacherId: string;
+  tutorExternoId: string;
+  tutorId: string;
+  planTrabajoId: string;
+  workPlanId: string;
+  coordinadorId: string;
+  directorId: string;
+  periodoLectivo: string;
+  academicPeriod: string;
+  estado: PracticaFormativaEstadoDomain;
+  status: PracticaFormativaEstadoDomain;
+  currentStatus: PracticeStatus;
+  fechaInicio: Date;
+  startDate: Date;
+  fechaFin: Date | null;
+  endDate: Date | null;
+  fechaFormalizacion: Date;
+  formalizedAt: Date;
+  horasRequeridas: number;
+  totalHoursRequired: number;
+  student?: {
+    id: string;
+    name: string;
+    nombre: string;
+    email: string;
+    studentCode?: string | null;
+    documentNumber?: string;
+    program?: string;
+  };
+  teacher?: {
+    id: string;
+    name: string;
+    nombre: string;
+    email: string;
+    correo: string;
+  };
+  tutor?: {
+    id: string;
+    name: string;
+    nombre: string;
+    email: string;
+    correo: string;
+    cargo?: string;
+  };
+  workPlan?: {
+    id: string;
+    estado: PlanTrabajoEstadoDomain;
+    status: WorkPlanStatus;
+    objectives: string;
+    methodology: string;
+    tutorApproved: boolean;
+    teacherApproved: boolean;
+  };
+  company?: {
+    id: string;
+    businessName: string;
+    razonSocial: string;
+    nit: string;
+  };
+  isNew: boolean;
+  message: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ------------------------------------------------------------------------------

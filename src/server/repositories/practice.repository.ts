@@ -379,6 +379,278 @@ export class PracticeRepository {
       },
     });
   }
+
+  /**
+   * Busca si el estudiante ya posee una práctica activa en estado "Formalizada" o "En Curso"
+   * en el periodo lectivo vigente (HU13 / CU13 - Criterio 3: uq_estudiante_practica_periodo)
+   */
+  async findActiveFormalizedOrInCourseByStudentAndPeriod(params: {
+    studentId: string;
+    academicPeriod: string;
+    excludePracticeId?: string;
+  }) {
+    const practices = await prisma.practice.findMany({
+      where: {
+        studentId: params.studentId,
+        isActive: true,
+        deletedAt: null,
+        ...(params.excludePracticeId ? { id: { not: params.excludePracticeId } } : {}),
+        currentStatus: {
+          in: [
+            'ASIGNADO_FORMALMENTE',
+            'PRACTICA_EN_EJECUCION',
+            'EVALUACION_PENDIENTE',
+          ],
+        },
+      },
+      include: {
+        vacancy: {
+          select: {
+            id: true,
+            title: true,
+            academicPeriod: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            businessName: true,
+            nit: true,
+          },
+        },
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+      },
+    });
+
+    const normalizedPeriod = (params.academicPeriod || '2026-1').trim();
+
+    return (
+      practices.find((p: any) => {
+        const pPeriod =
+          p.academicPeriod ||
+          p.periodoLectivo ||
+          p.vacancy?.academicPeriod ||
+          (p.statusHistory?.[0]?.metadata as any)?.academicPeriod ||
+          '2026-1';
+        return String(pPeriod).trim() === normalizedPeriod;
+      }) || null
+    );
+  }
+
+  /**
+   * Obtiene un plan de trabajo por su ID (planes_trabajo)
+   */
+  async findWorkPlanById(workPlanId: string) {
+    return prisma.workPlan.findUnique({
+      where: { id: workPlanId },
+    });
+  }
+
+  /**
+   * Obtiene el plan de trabajo vinculado a una práctica
+   */
+  async findWorkPlanByPracticeId(practiceId: string) {
+    return prisma.workPlan.findUnique({
+      where: { practiceId },
+    });
+  }
+
+  /**
+   * Crea o actualiza transaccionalmente el registro de práctica formalizada en practicas_formativas (HU13 / CU13 - Criterio 1)
+   */
+  async saveFormalizedPractice(params: {
+    practiceId?: string;
+    studentId: string;
+    companyId: string;
+    vacancyId?: string | null;
+    teacherId: string;
+    tutorId: string;
+    directorId: string;
+    academicPeriod: string;
+    targetInternalStatus: PracticeStatus;
+    targetDomainStatus: string;
+    startDate: Date;
+    endDate?: Date | null;
+    totalHoursRequired?: number;
+    arlSupportUrl?: string | null;
+    presentationLetterUrl?: string | null;
+    notes?: string;
+    workPlanData?: {
+      id?: string;
+      objectives: string;
+      methodology: string;
+      schedule: Prisma.InputJsonValue;
+      documentUrl?: string | null;
+      status: WorkPlanStatus;
+      tutorApproved: boolean;
+      teacherApproved: boolean;
+      feedback?: string | null;
+    };
+  }) {
+    return prisma.$transaction(async (tx) => {
+      let practiceRecord: any;
+      let previousStatus: PracticeStatus = 'ASPIRANTE';
+      let isNew = false;
+
+      if (params.practiceId) {
+        const existing = await tx.practice.findUnique({
+          where: { id: params.practiceId },
+        });
+
+        if (existing) {
+          previousStatus = existing.currentStatus as PracticeStatus;
+          practiceRecord = await tx.practice.update({
+            where: { id: params.practiceId },
+            data: {
+              teacherId: params.teacherId,
+              tutorId: params.tutorId,
+              directorId: params.directorId,
+              currentStatus: params.targetInternalStatus,
+              startDate: params.startDate,
+              ...(params.endDate !== undefined ? { endDate: params.endDate } : {}),
+              ...(params.totalHoursRequired ? { totalHoursRequired: params.totalHoursRequired } : {}),
+              ...(params.arlSupportUrl ? { arlSupportUrl: params.arlSupportUrl } : {}),
+              ...(params.presentationLetterUrl
+                ? { presentationLetterUrl: params.presentationLetterUrl }
+                : {}),
+              isActive: true,
+              updatedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      if (!practiceRecord) {
+        isNew = true;
+        practiceRecord = await tx.practice.create({
+          data: {
+            studentId: params.studentId,
+            companyId: params.companyId,
+            vacancyId: params.vacancyId || null,
+            teacherId: params.teacherId,
+            tutorId: params.tutorId,
+            directorId: params.directorId,
+            currentStatus: params.targetInternalStatus,
+            startDate: params.startDate,
+            endDate: params.endDate || null,
+            totalHoursRequired: params.totalHoursRequired || 320,
+            arlSupportUrl: params.arlSupportUrl || null,
+            presentationLetterUrl: params.presentationLetterUrl || null,
+            isActive: true,
+          },
+        });
+      }
+
+      let workPlanRecord = await tx.workPlan.findUnique({
+        where: { practiceId: practiceRecord.id },
+      });
+
+      if (params.workPlanData) {
+        workPlanRecord = await tx.workPlan.upsert({
+          where: { practiceId: practiceRecord.id },
+          create: {
+            practiceId: practiceRecord.id,
+            objectives: params.workPlanData.objectives,
+            methodology: params.workPlanData.methodology,
+            schedule: params.workPlanData.schedule,
+            documentUrl: params.workPlanData.documentUrl || null,
+            status: params.workPlanData.status,
+            tutorApproved: params.workPlanData.tutorApproved,
+            tutorApprovedAt: params.workPlanData.tutorApproved ? new Date() : null,
+            tutorApprovedById: params.workPlanData.tutorApproved ? params.tutorId : null,
+            teacherApproved: params.workPlanData.teacherApproved,
+            teacherApprovedAt: params.workPlanData.teacherApproved ? new Date() : null,
+            teacherApprovedById: params.workPlanData.teacherApproved ? params.teacherId : null,
+            feedback: params.workPlanData.feedback || null,
+          },
+          update: {
+            objectives: params.workPlanData.objectives,
+            methodology: params.workPlanData.methodology,
+            schedule: params.workPlanData.schedule,
+            status: params.workPlanData.status,
+            tutorApproved: params.workPlanData.tutorApproved,
+            teacherApproved: params.workPlanData.teacherApproved,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      await tx.practiceStatusHistory.create({
+        data: {
+          practiceId: practiceRecord.id,
+          fromStatus: previousStatus,
+          toStatus: params.targetInternalStatus,
+          changedByUserId: params.directorId,
+          notes:
+            params.notes ||
+            `Formalización oficial de la práctica empresarial emitida en estado '${params.targetDomainStatus}' (CU13)`,
+          metadata: {
+            caseOfUse: 'CU13',
+            domainStatus: params.targetDomainStatus,
+            academicPeriod: params.academicPeriod,
+            teacherId: params.teacherId,
+            tutorId: params.tutorId,
+            workPlanId: workPlanRecord?.id || null,
+            officialStartDate: params.startDate.toISOString(),
+            formalizedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      const fullPractice = await tx.practice.findUnique({
+        where: { id: practiceRecord.id },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              studentCode: true,
+              documentNumber: true,
+              program: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              businessName: true,
+              nit: true,
+              city: true,
+            },
+          },
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              program: true,
+            },
+          },
+          tutor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              program: true,
+              companyId: true,
+            },
+          },
+          workPlan: true,
+        },
+      });
+
+      return {
+        practice: fullPractice || practiceRecord,
+        workPlan: workPlanRecord,
+        isNew,
+      };
+    });
+  }
 }
 
 export const practiceRepository = new PracticeRepository();

@@ -216,6 +216,14 @@ export class UserRepository {
                 select: {
                   id: true,
                   title: true,
+                  academicPeriod: true,
+                },
+              },
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
                 },
               },
               tutor: {
@@ -224,6 +232,14 @@ export class UserRepository {
                   name: true,
                   email: true,
                   program: true,
+                },
+              },
+              workPlan: {
+                select: {
+                  id: true,
+                  status: true,
+                  tutorApproved: true,
+                  teacherApproved: true,
                 },
               },
             },
