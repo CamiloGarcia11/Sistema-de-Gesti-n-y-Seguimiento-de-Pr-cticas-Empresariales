@@ -319,7 +319,105 @@ CREATE TABLE IF NOT EXISTS "reports" (
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Tabla: evaluations (Evaluaciones de competencias y calificación)
+-- Tabla: reports (Informes de avance y final del practicante)
+CREATE TABLE IF NOT EXISTS "reports" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "practice_id" UUID NOT NULL REFERENCES "practices"("id") ON DELETE CASCADE,
+    "student_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "type" "ReportType" NOT NULL,
+    "status" "ReportStatus" NOT NULL DEFAULT 'PENDIENTE',
+    "document_url" TEXT,
+    "period_start" TIMESTAMPTZ,
+    "period_end" TIMESTAMPTZ,
+    "hours_reported" INT NOT NULL DEFAULT 0,
+    "reviewed_by_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
+    "feedback" TEXT,
+    "reviewed_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ==============================================================================
+-- CU14: SEGUIMIENTO Y CONTROL DE PRÁCTICAS - INFORMES DE AVANCE Y BITÁCORAS
+-- Entidades: informes_avance, practicas_formativas, bitacoras_seguimiento, archivos_adjuntos
+-- ==============================================================================
+
+-- Vista conceptual: practicas_formativas
+CREATE OR REPLACE VIEW "practicas_formativas" AS
+SELECT
+    "id",
+    "application_id" AS "postulacion_id",
+    "student_id" AS "estudiante_id",
+    "company_id" AS "empresa_id",
+    "vacancy_id" AS "plaza_id",
+    "teacher_id" AS "docente_id",
+    "tutor_id" AS "tutor_id",
+    "director_id" AS "director_id",
+    "current_status" AS "estado",
+    "start_date" AS "fecha_inicio",
+    "end_date" AS "fecha_fin",
+    "total_hours_required" AS "horas_requeridas",
+    "total_hours_completed" AS "horas_completadas",
+    "final_score" AS "calificacion_final",
+    "is_active" AS "activo",
+    "created_at" AS "fecha_creacion",
+    "updated_at" AS "fecha_actualizacion",
+    "deleted_at"
+FROM "practices";
+
+-- Tabla: informes_avance (Informes periódicos y de seguimiento del plan formativo)
+CREATE TABLE IF NOT EXISTS "informes_avance" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "practica_id" UUID NOT NULL,
+    "estudiante_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "tipo" VARCHAR(50) NOT NULL DEFAULT 'SEGUIMIENTO',
+    "estado" VARCHAR(50) NOT NULL DEFAULT 'Borrador',
+    "horas_ejecutadas" INT NOT NULL,
+    "descripcion_actividades" TEXT NOT NULL,
+    "periodo_inicio" TIMESTAMPTZ,
+    "periodo_fin" TIMESTAMPTZ,
+    "fecha_entrega" TIMESTAMPTZ,
+    "revisado_por_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
+    "observaciones" TEXT,
+    "revisado_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "fk_informe_practica" FOREIGN KEY ("practica_id") REFERENCES "practices"("id") ON DELETE CASCADE,
+    CONSTRAINT "chk_horas_ejecutadas_positivas" CHECK ("horas_ejecutadas" > 0),
+    CONSTRAINT "chk_estado_informe" CHECK ("estado" IN ('Borrador', 'Radicado', 'En Revisión', 'Aprobado', 'Rechazado'))
+);
+
+-- Tabla: bitacoras_seguimiento (Registro detallado de actividades y horas del practicante)
+CREATE TABLE IF NOT EXISTS "bitacoras_seguimiento" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "informe_id" UUID REFERENCES "informes_avance"("id") ON DELETE CASCADE,
+    "practica_id" UUID NOT NULL,
+    "estudiante_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "fecha_actividad" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "descripcion_actividades" TEXT NOT NULL,
+    "horas_ejecutadas" INT NOT NULL,
+    "observaciones" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT "fk_bitacora_practica" FOREIGN KEY ("practica_id") REFERENCES "practices"("id") ON DELETE CASCADE,
+    CONSTRAINT "chk_bitacora_horas_positivas" CHECK ("horas_ejecutadas" > 0)
+);
+
+-- Tabla: archivos_adjuntos (Evidencias y soportes documentales de seguimiento)
+CREATE TABLE IF NOT EXISTS "archivos_adjuntos" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "entidad_tipo" VARCHAR(50) NOT NULL,
+    "entidad_id" UUID NOT NULL,
+    "nombre_archivo" VARCHAR(255) NOT NULL,
+    "url_archivo" TEXT NOT NULL,
+    "tipo_mime" VARCHAR(100),
+    "tamano_bytes" BIGINT,
+    "subido_por_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 CREATE TABLE IF NOT EXISTS "evaluations" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "practice_id" UUID NOT NULL REFERENCES "practices"("id") ON DELETE CASCADE,
@@ -383,6 +481,16 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
+    CREATE TRIGGER update_informes_avance_updated_at BEFORE UPDATE ON "informes_avance"
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_bitacoras_seguimiento_updated_at BEFORE UPDATE ON "bitacoras_seguimiento"
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
     CREATE TRIGGER update_evaluations_updated_at BEFORE UPDATE ON "evaluations"
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -426,6 +534,14 @@ CREATE INDEX IF NOT EXISTS "idx_work_plans_status" ON "work_plans"("status");
 CREATE INDEX IF NOT EXISTS "idx_reports_practice_id" ON "reports"("practice_id");
 CREATE INDEX IF NOT EXISTS "idx_reports_student_id" ON "reports"("student_id");
 CREATE INDEX IF NOT EXISTS "idx_evaluations_practice_id" ON "evaluations"("practice_id");
+
+-- Índices CU14: Seguimiento y Control de Prácticas
+CREATE INDEX IF NOT EXISTS "idx_informes_practica_id" ON "informes_avance"("practica_id");
+CREATE INDEX IF NOT EXISTS "idx_informes_estudiante_id" ON "informes_avance"("estudiante_id");
+CREATE INDEX IF NOT EXISTS "idx_informes_estado" ON "informes_avance"("estado");
+CREATE INDEX IF NOT EXISTS "idx_bitacoras_informe_id" ON "bitacoras_seguimiento"("informe_id");
+CREATE INDEX IF NOT EXISTS "idx_bitacoras_practica_id" ON "bitacoras_seguimiento"("practica_id");
+CREATE INDEX IF NOT EXISTS "idx_archivos_entidad" ON "archivos_adjuntos"("entidad_tipo", "entidad_id");
 
 -- ------------------------------------------------------------------------------
 -- 7. CONFIGURACIÓN DE SUPABASE STORAGE (BUCKET DE EXPEDIENTES)

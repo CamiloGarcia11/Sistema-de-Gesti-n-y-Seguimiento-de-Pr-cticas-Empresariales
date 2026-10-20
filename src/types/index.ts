@@ -445,3 +445,130 @@ export interface ApiResponse<T = unknown> {
   timestamp: string;
 }
 
+// ------------------------------------------------------------------------------
+// DTOs y Dominio de Seguimiento y Control de Prácticas (CU14: Entrega de Informes de Avance y Bitácoras)
+// ------------------------------------------------------------------------------
+
+export type InformeEstadoDomain =
+  | 'Borrador'
+  | 'Radicado'
+  | 'En Revisión'
+  | 'Aprobado'
+  | 'Rechazado';
+
+export const DOMAIN_INFORME_STATUSES: InformeEstadoDomain[] = [
+  'Borrador',
+  'Radicado',
+  'En Revisión',
+  'Aprobado',
+  'Rechazado',
+];
+
+// Estados de práctica activos para radicación (Criterio 1 y Criterio 3)
+export const ACTIVE_PRACTICE_STATUSES = [
+  'ASIGNADO_FORMALMENTE',
+  'PRACTICA_EN_EJECUCION',
+  'Formalizada',
+  'En Curso',
+] as const;
+
+// Estados de práctica no activos (Criterio 3)
+export const INACTIVE_PRACTICE_STATUSES = [
+  'ASPIRANTE',
+  'POSTULADO',
+  'PRESENTADO_A_EMPRESA',
+  'REUBICACION_PENDIENTE',
+  'ACEPTADO_ARL_PENDIENTE',
+  'PLAN_EN_REVISION',
+  'EVALUACION_PENDIENTE',
+  'FINALIZADA',
+  'CERRADA',
+  'CANCELADO',
+  'Finalizada',
+  'Cancelada',
+  'En Trámite',
+] as const;
+
+export interface RadicarInformeDTO {
+  practicaId?: string;
+  practiceId?: string;
+  horasEjecutadas?: number;
+  horas_ejecutadas?: number;
+  horas?: number;
+  descripcionActividades?: string;
+  descripcion_actividades?: string;
+  actividades?: string;
+  tipo?: string;
+  estado?: string;
+  periodoInicio?: string | Date;
+  periodoFin?: string | Date;
+  documentUrl?: string;
+  documento_url?: string;
+  archivosAdjuntos?: Array<{
+    nombreArchivo: string;
+    urlArchivo: string;
+    tipoMime?: string;
+    tamanoBytes?: number;
+  }>;
+  observaciones?: string;
+}
+
+export interface AttachmentDTO {
+  id: string;
+  entidadTipo: string;
+  entidadId: string;
+  nombreArchivo: string;
+  urlArchivo: string;
+  tipoMime?: string | null;
+  tamanoBytes?: number | string | bigint | null;
+  createdAt: Date | string;
+}
+
+export interface FollowUpLogDTO {
+  id: string;
+  informeId?: string | null;
+  practicaId: string;
+  estudianteId: string;
+  fechaActividad: Date | string;
+  descripcionActividades: string;
+  horasEjecutadas: number;
+  observaciones?: string | null;
+  createdAt: Date | string;
+}
+
+export interface AdvanceReportResponseDTO {
+  id: string;
+  practicaId: string;
+  estudianteId: string;
+  tipo: string;
+  estado: InformeEstadoDomain;
+  horasEjecutadas: number;
+  descripcionActividades: string;
+  periodoInicio?: Date | string | null;
+  periodoFin?: Date | string | null;
+  fechaEntrega: Date | string;
+  revisadoPorId?: string | null;
+  observaciones?: string | null;
+  revisadoAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  bitacora?: FollowUpLogDTO;
+  bitacoras?: FollowUpLogDTO[];
+  archivos?: AttachmentDTO[];
+  practice?: {
+    id: string;
+    currentStatus: string;
+    totalHoursRequired: number;
+    totalHoursCompleted: number;
+  };
+}
+
+export interface RadicarInformeResultDTO {
+  informe: AdvanceReportResponseDTO;
+  bitacora: FollowUpLogDTO;
+  horasReportadas: number;
+  totalHorasAcumuladas: number;
+  fechaEntrega: Date | string;
+  mensaje: string;
+}
+
