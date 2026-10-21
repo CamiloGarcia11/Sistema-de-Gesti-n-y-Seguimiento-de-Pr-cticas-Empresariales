@@ -16,6 +16,7 @@ import {
   Role,
 } from '@/types';
 import { hashPassword } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 export class ValidationError extends Error {
