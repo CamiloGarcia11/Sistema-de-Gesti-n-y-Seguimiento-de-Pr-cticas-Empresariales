@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 // SIGETRAP - Controlador de Consulta, Supervisión y Formalización de Prácticas
 // Capa de Controladores (Route Handler RNF11)
 // Endpoints:
-//   - GET  /api/v1/practicas (Supervisión para docentes, directores, tutores y administradores)
+//   - GET  /api/v1/practicas (Supervisión para docentes, directores, tutores, administradores y consulta del estudiante)
 //   - POST /api/v1/practicas (Emisión y formalización de la práctica empresarial - HU13 / CU13)
 // ==============================================================================
 
@@ -38,7 +38,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<ApiResponse>> 
       actor.role !== 'DOCENTE_PRACTICA' &&
       actor.role !== 'DIRECTOR_PROGRAMA' &&
       actor.role !== 'TUTOR_EMPRESARIAL' &&
-      actor.role !== 'ADMIN'
+      actor.role !== 'ADMIN' &&
+      actor.role !== 'ESTUDIANTE'
     ) {
       return NextResponse.json(
         {
@@ -60,8 +61,11 @@ export async function GET(req: NextRequest): Promise<NextResponse<ApiResponse>> 
     let companyId: string | undefined = undefined;
     let tutorId: string | undefined = undefined;
     let teacherId: string | undefined = undefined;
+    let studentId: string | undefined = undefined;
 
-    if (actor.role === 'TUTOR_EMPRESARIAL') {
+    if (actor.role === 'ESTUDIANTE') {
+      studentId = actor.id;
+    } else if (actor.role === 'TUTOR_EMPRESARIAL') {
       companyId = actor.companyId || undefined;
       tutorId = searchParams.get('onlyMine') === 'true' ? actor.id : undefined;
     } else if (actor.role === 'DOCENTE_PRACTICA') {
@@ -72,6 +76,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<ApiResponse>> 
       companyId,
       tutorId,
       teacherId,
+      studentId,
       status,
       search,
     });

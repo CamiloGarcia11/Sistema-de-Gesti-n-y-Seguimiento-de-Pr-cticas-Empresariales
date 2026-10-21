@@ -25,11 +25,14 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiAdminRoute = pathname.startsWith('/api/v1/admin');
   const isPageAdminRoute = pathname.startsWith('/admin');
+  const isInformesRoute = pathname.startsWith('/estudiantes/informes');
   const isStudentsRoute = pathname.startsWith('/estudiantes');
+  const isPeriodosRoute = pathname.startsWith('/periodos');
   const isProtectedAppRoute =
     pathname.startsWith('/vacantes') ||
     pathname.startsWith('/empresas') ||
     pathname.startsWith('/estudiante') ||
+    isPeriodosRoute ||
     isStudentsRoute ||
     isPageAdminRoute;
 
@@ -95,8 +98,31 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Si es ruta de supervisión de estudiantes / practicantes, validar roles docentes, tutor o admin
-  if (isStudentsRoute) {
+  // Si es ruta de periodos lectivos (HU05), validar rol DIRECTOR_PROGRAMA o ADMIN
+  if (isPeriodosRoute) {
+    const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  // Si es ruta de informes de avance y bitácoras (CU14)
+  if (isInformesRoute) {
+    const isAuthorized =
+      payload.role === 'ESTUDIANTE' ||
+      payload.role === 'DOCENTE_PRACTICA' ||
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'TUTOR_EMPRESARIAL' ||
+      payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  } else if (isStudentsRoute) {
+    // Si es directorio de supervisión de estudiantes / practicantes, validar roles docentes, tutor o admin
     const isAuthorized =
       payload.role === 'DOCENTE_PRACTICA' ||
       payload.role === 'DIRECTOR_PROGRAMA' ||
@@ -119,5 +145,6 @@ export const config = {
     '/empresas/:path*',
     '/estudiantes/:path*',
     '/estudiante/:path*',
+    '/periodos/:path*',
   ],
 };
