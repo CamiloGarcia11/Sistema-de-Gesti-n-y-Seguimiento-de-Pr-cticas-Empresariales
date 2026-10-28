@@ -18,6 +18,7 @@ import {
   Clock,
   Layers,
   FileCheck2,
+  Award,
   ShieldCheck,
   IdCard,
   Check,

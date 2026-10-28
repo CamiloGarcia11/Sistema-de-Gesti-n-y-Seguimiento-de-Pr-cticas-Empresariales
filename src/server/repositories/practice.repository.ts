@@ -651,6 +651,150 @@ export class PracticeRepository {
       };
     });
   }
+
+  /**
+   * Consulta una práctica con todos sus detalles evaluativos, informes y prerrequisitos para liquidación
+   */
+  async findPracticeForLiquidation(practiceId: string) {
+    return prisma.practice.findUnique({
+      where: { id: practiceId },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            studentCode: true,
+            documentNumber: true,
+            program: true,
+            academicAverage: true,
+            approvedCredits: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            businessName: true,
+            nit: true,
+            address: true,
+            city: true,
+            contactEmail: true,
+          },
+        },
+        vacancy: {
+          select: {
+            id: true,
+            title: true,
+            program: true,
+            vacanciesCount: true,
+          },
+        },
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            specialty: true,
+          },
+        },
+        tutor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        workPlan: true,
+        evaluations: {
+          include: {
+            evaluator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        advanceReports: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+        },
+        followUpLogs: {
+          where: { deletedAt: null },
+          orderBy: { fechaActividad: 'desc' },
+        },
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            changedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Ejecuta la liquidación de la práctica en una transacción inmutable
+   */
+  async liquidatePractice(params: {
+    practiceId: string;
+    finalScore: number;
+    actorId: string;
+    notes?: string;
+    previousStatus: any;
+  }) {
+    return prisma.$transaction(async (tx) => {
+      const updatedPractice = await tx.practice.update({
+        where: { id: params.practiceId },
+        data: {
+          currentStatus: 'FINALIZADA' as any,
+          finalScore: params.finalScore,
+          isActive: false,
+          endDate: new Date(),
+        },
+        include: {
+          student: true,
+          company: true,
+          teacher: true,
+          tutor: true,
+        },
+      });
+
+      await tx.practiceStatusHistory.create({
+        data: {
+          practiceId: params.practiceId,
+          fromStatus: params.previousStatus,
+          toStatus: 'FINALIZADA' as any,
+          changedByUserId: params.actorId,
+          notes: params.notes || ('Liquidación académica de práctica. Nota definitiva: ' + params.finalScore.toFixed(2)),
+        },
+      });
+
+      return updatedPractice;
+    });
+  }
+
+  /**
+   * Actualiza el expediente curricular del estudiante al finalizar la práctica
+   */
+  async updateStudentCurriculum(studentId: string) {
+    return prisma.user.update({
+      where: { id: studentId },
+      data: { updatedAt: new Date() },
+    });
+  }
 }
 
 export const practiceRepository = new PracticeRepository();
