@@ -16,6 +16,7 @@ import {
   Role,
 } from '@/types';
 import { hashPassword } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 export class ValidationError extends Error {
@@ -555,8 +556,28 @@ export class UserManagementService {
         ? {
             id: latestPractice.id,
             currentStatus: latestPractice.currentStatus,
+            academicPeriod: latestPractice.academicPeriod || latestPractice.vacancy?.academicPeriod || '2026-1',
+            companyId: latestPractice.companyId || latestPractice.company?.id || null,
             companyName: latestPractice.company?.businessName || null,
             vacancyTitle: latestPractice.vacancy?.title || null,
+            teacherId: latestPractice.teacherId || latestPractice.teacher?.id || null,
+            teacherName: latestPractice.teacher?.name || null,
+            teacherEmail: latestPractice.teacher?.email || null,
+            tutorId: latestPractice.tutorId || latestPractice.tutor?.id || null,
+            tutorName: latestPractice.tutor?.name || null,
+            tutorEmail: latestPractice.tutor?.email || null,
+            tutorCargo:
+              latestPractice.tutor?.program &&
+              latestPractice.tutor.program !== 'Ingeniería de Sistemas'
+                ? latestPractice.tutor.program
+                : 'Supervisor Empresarial',
+            workPlanId: latestPractice.workPlan?.id || null,
+            workPlanStatus:
+              latestPractice.workPlan?.status === 'APROBADO_DUAL' ||
+              (latestPractice.workPlan?.tutorApproved && latestPractice.workPlan?.teacherApproved)
+                ? 'Aprobado'
+                : latestPractice.workPlan?.status || null,
+            startDate: latestPractice.startDate || null,
           }
         : null,
       createdAt: user.createdAt,

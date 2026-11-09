@@ -171,7 +171,7 @@ export class CandidateSelectionService {
     // Si intenta marcar como "Aceptado", verificar el límite de vacantes
     if (targetStatus === 'Aceptado') {
       const isAlreadyAccepted =
-        previousStatus === 'Aceptado' ||
+        (previousStatus as string) === 'Aceptado' ||
         previousStatus === 'ACEPTADO';
 
       if (!isAlreadyAccepted) {
