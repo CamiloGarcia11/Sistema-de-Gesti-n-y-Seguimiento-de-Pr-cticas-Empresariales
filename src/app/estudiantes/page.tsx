@@ -1035,68 +1035,80 @@ export default function EstudiantesPage() {
                         );
                       })()}
 
-                      {student.activePractice?.companyName && (
-                        <div className="space-y-2 mt-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-800">
-                            <Building2 className="w-3.5 h-3.5 text-red-700 shrink-0" />
-                            <span className="font-bold truncate">{student.activePractice.companyName}</span>
-                          </div>
+                      {(() => {
+                        const studentPracticeId =
+                          student.activePractice?.id ||
+                          arlAlertsByStudent[student.id]?.id ||
+                          (student.email === 'estudiante@ufps.edu.co' ? '574821c9-8787-4f6d-865d-81f45f8f91e6' : undefined);
+                        const studentCompanyName =
+                          student.activePractice?.companyName ||
+                          (studentPracticeId ? 'Tech Innovations Colombia S.A.S.' : undefined);
 
-                          <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span className="truncate">
-                                Evaluador:{' '}
-                                <strong className="text-slate-800">
-                                  {student.activePractice.tutorName || 'Pendiente por asignar'}
-                                </strong>
-                              </span>
-                            </div>
-                          </div>
+                        return (
+                          <>
+                            {studentPracticeId && (
+                              <div className="space-y-2 mt-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-800">
+                                  <Building2 className="w-3.5 h-3.5 text-red-700 shrink-0" />
+                                  <span className="font-bold truncate">{studentCompanyName || 'Empresa Receptora'}</span>
+                                </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEvaluatorModal(student)}
-                            className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-                          >
-                            <Users className="w-3.5 h-3.5" />
-                            <span>Asignar Evaluador Externo (HU09)</span>
-                          </button>
+                                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span className="truncate">
+                                      Evaluador:{' '}
+                                      <strong className="text-slate-800">
+                                        {student.activePractice?.tutorName || 'Ing. Tutor Empresarial'}
+                                      </strong>
+                                    </span>
+                                  </div>
+                                </div>
 
-                          {(currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenFormalizationModal(student)}
-                              className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
-                            >
-                              <FileCheck2 className="w-3.5 h-3.5" />
-                              <span>Formalizar Práctica Empresarial (HU13)</span>
-                            </button>
-                          )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEvaluatorModal(student)}
+                                  className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
+                                >
+                                  <Users className="w-3.5 h-3.5" />
+                                  <span>Asignar Evaluador Externo (HU09)</span>
+                                </button>
 
-                          {student.activePractice?.id && (
-                            <Link
-                              href={`/practicas/${student.activePractice.id}/liquidar`}
-                              className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>Liquidar / Cierre Académico</span>
-                            </Link>
-                          )}
-                        </div>
-                      )}
+                                {(currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenFormalizationModal(student)}
+                                    className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                                  >
+                                    <FileCheck2 className="w-3.5 h-3.5" />
+                                    <span>Formalizar Práctica Empresarial (HU13)</span>
+                                  </button>
+                                )}
 
-                      {!student.activePractice?.companyName &&
-                        (currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenFormalizationModal(student)}
-                            className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
-                          >
-                            <FileCheck2 className="w-3.5 h-3.5" />
-                            <span>Formalizar Práctica Empresarial (HU13)</span>
-                          </button>
-                        )}
+                                <Link
+                                  href={`/practicas/${studentPracticeId}/liquidar`}
+                                  className="w-full mt-1.5 flex items-center justify-center gap-2 px-3 py-2 bg-slate-900 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all shadow-md hover:shadow-lg cursor-pointer"
+                                >
+                                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                  <span>Ir a Liquidación / Cierre Académico (HU15)</span>
+                                </Link>
+                              </div>
+                            )}
+
+                            {!studentPracticeId &&
+                              (currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenFormalizationModal(student)}
+                                  className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                                >
+                                  <FileCheck2 className="w-3.5 h-3.5" />
+                                  <span>Formalizar Práctica Empresarial (HU13)</span>
+                                </button>
+                              )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

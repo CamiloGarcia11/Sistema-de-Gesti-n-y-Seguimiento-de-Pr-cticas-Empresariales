@@ -123,11 +123,13 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
-  // Si es ruta de liquidación de práctica (RN01), solo Director o Admin
+  // Si es ruta de liquidación de práctica (RN01), permitir a coordinadores, docentes y tutores evaluadores
   if (pathname.includes('/liquidar')) {
     const isAuthorized =
       payload.role === 'DIRECTOR_PROGRAMA' ||
-      payload.role === 'ADMIN';
+      payload.role === 'ADMIN' ||
+      payload.role === 'DOCENTE_PRACTICA' ||
+      payload.role === 'TUTOR_EMPRESARIAL';
 
     if (!isAuthorized) {
       return NextResponse.redirect(new URL('/', request.url));

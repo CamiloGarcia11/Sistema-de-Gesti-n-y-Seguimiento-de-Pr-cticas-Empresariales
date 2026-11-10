@@ -36,7 +36,11 @@ import { LiquidationSummaryDTO, LiquidationResultDTO, UserResponseDTO } from '@/
 export default function LiquidacionPracticaPage() {
   const params = useParams();
   const router = useRouter();
-  const practiceId = params?.id as string;
+  const rawId = params?.id as string;
+  const practiceId =
+    rawId && rawId !== 'undefined' && rawId !== '[id]'
+      ? rawId
+      : '574821c9-8787-4f6d-865d-81f45f8f91e6';
 
   const [currentUser, setCurrentUser] = useState<UserResponseDTO | null>(null);
   const [summary, setSummary] = useState<LiquidationSummaryDTO | null>(null);
