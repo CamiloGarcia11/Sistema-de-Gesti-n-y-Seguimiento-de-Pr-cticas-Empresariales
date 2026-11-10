@@ -28,12 +28,14 @@ export function middleware(request: NextRequest) {
   const isInformesRoute = pathname.startsWith('/estudiantes/informes');
   const isStudentsRoute = pathname.startsWith('/estudiantes');
   const isPeriodosRoute = pathname.startsWith('/periodos');
+  const isDashboardRoute = pathname.startsWith('/dashboard'); // NUEVO
   const isPracticasRoute = pathname.startsWith('/practicas');
   const isProtectedAppRoute =
     pathname.startsWith('/vacantes') ||
     pathname.startsWith('/empresas') ||
     pathname.startsWith('/estudiante') ||
     isPeriodosRoute ||
+    isDashboardRoute || // NUEVO
     isPracticasRoute ||
     isStudentsRoute ||
     isPageAdminRoute;
@@ -111,6 +113,16 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // NUEVO: dashboard general de prácticas y reportes, validar rol DIRECTOR_PROGRAMA o ADMIN
+  if (isDashboardRoute) {
+        const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
   // Si es ruta de liquidación de práctica (RN01), solo Director o Admin
   if (pathname.includes('/liquidar')) {
     const isAuthorized =
@@ -171,6 +183,7 @@ export const config = {
     '/estudiantes/:path*',
     '/estudiante/:path*',
     '/periodos/:path*',
+    '/dashboard/:path*', // NUEVO
     '/practicas/:path*',
   ],
 };
