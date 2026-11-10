@@ -92,8 +92,8 @@ export class PracticeLiquidationService {
     );
 
     // 2. Desglose de evaluaciones
-    const tutorScore = tutorEval?.quantitativeScore ?? null;
-    const teacherScore = teacherEval?.quantitativeScore ?? null;
+    const tutorScore = tutorEval?.quantitativeScore ?? (tutorEval as any)?.finalScore ?? null;
+    const teacherScore = teacherEval?.quantitativeScore ?? (teacherEval as any)?.finalScore ?? null;
 
     // 3. Desglose de horas e informes (20% de la nota)
     const requiredHours = practice.totalHoursRequired || 320;

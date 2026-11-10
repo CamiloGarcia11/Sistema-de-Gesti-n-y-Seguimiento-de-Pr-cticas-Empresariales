@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic';
 // ==============================================================================
 // SIGETRAP - Controlador de Configuración e Inspección de Periodo Lectivo por ID (HU05 / CU02)
 // Endpoints:
-//   - GET   /api/v1/periodos-academicos/[id] (Obtiene el detalle de un periodo lectivo)
-//   - PATCH /api/v1/periodos-academicos/[id] (Actualiza fechas de vigencia, ventanas o estado)
-//   - PUT   /api/v1/periodos-academicos/[id] (Alias de actualización de configuración)
+//   - GET    /api/v1/periodos-academicos/[id] (Obtiene el detalle de un periodo lectivo)
+//   - PATCH  /api/v1/periodos-academicos/[id] (Actualiza fechas de vigencia, ventanas o estado)
+//   - PUT    /api/v1/periodos-academicos/[id] (Alias de actualización de configuración)
+//   - DELETE /api/v1/periodos-academicos/[id] (Baja lógica de un periodo lectivo)
 // ==============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,6 +15,7 @@ import {
   getAcademicPeriodService,
   AcademicPeriodValidationError,
 } from '@/server/services/academic-period.service';
+import { academicPeriodRepository } from '@/server/repositories/academic-period.repository';
 import { ApiResponse } from '@/types';
 
 interface RouteContext {
@@ -155,4 +157,75 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse<ApiResponse>> {
   return PATCH(req, context);
+}
+
+/**
+ * DELETE /api/v1/periodos-academicos/[id]
+ * Realiza baja lógica (soft-delete) de un periodo académico para preservar integridad referencial.
+ */
+export async function DELETE(
+  req: NextRequest,
+  context: RouteContext
+): Promise<NextResponse<ApiResponse>> {
+  try {
+    const actor = getAuthenticatedUser(req);
+    if (!actor || (actor.role !== 'DIRECTOR_PROGRAMA' && actor.role !== 'ADMIN')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Solo el Director de Programa o Administrador puede dar de baja periodos lectivos.',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await context.params;
+    const existing = await academicPeriodRepository.findById(id);
+    if (!existing || existing.deletedAt) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'PERIOD_NOT_FOUND',
+            message: 'El periodo académico especificado no existe.',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 }
+      );
+    }
+
+    await academicPeriodRepository.update(id, {
+      isActive: false,
+      status: 'Cerrado',
+      deletedAt: new Date(),
+    } as any);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Periodo lectivo ${(existing as any).codigo || (existing as any).code || ''} dado de baja exitosamente.`,
+        data: { id, deleted: true },
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    console.error('[API_DELETE_PERIODO_ERROR]:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al dar de baja el periodo académico.',
+        },
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
+  }
 }

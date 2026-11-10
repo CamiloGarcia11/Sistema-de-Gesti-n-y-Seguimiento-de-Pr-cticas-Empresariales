@@ -705,8 +705,30 @@ export default function EstudiantesPage() {
                               <span>Formalizar Práctica Empresarial (HU13)</span>
                             </button>
                           )}
+
+                          {student.activePractice?.id && (
+                            <Link
+                              href={`/practicas/${student.activePractice.id}/liquidar`}
+                              className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Liquidar / Cierre Académico</span>
+                            </Link>
+                          )}
                         </div>
                       )}
+
+                      {!student.activePractice?.companyName &&
+                        (currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFormalizationModal(student)}
+                            className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                          >
+                            <FileCheck2 className="w-3.5 h-3.5" />
+                            <span>Formalizar Práctica Empresarial (HU13)</span>
+                          </button>
+                        )}
                     </div>
                   </div>
                 </div>

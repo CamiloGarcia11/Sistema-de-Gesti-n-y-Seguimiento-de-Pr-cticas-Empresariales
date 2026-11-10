@@ -21,6 +21,9 @@ import {
   ShieldAlert,
   Loader2,
   FileCheck,
+  Edit3,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -57,12 +60,17 @@ export default function InformesAvancePage() {
   const [isLoadingPractice, setIsLoadingPractice] = useState(true);
 
   // Form states
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [horasEjecutadas, setHorasEjecutadas] = useState<string>('');
   const [descripcionActividades, setDescripcionActividades] = useState('');
   const [periodoInicio, setPeriodoInicio] = useState('');
   const [periodoFin, setPeriodoFin] = useState('');
   const [documentUrl, setDocumentUrl] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadedAttachments, setUploadedAttachments] = useState<
+    Array<{ nombreArchivo: string; urlArchivo: string; tipoMime: string; tamanoBytes: number }>
+  >([]);
 
   // UI Feedback states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,6 +143,7 @@ export default function InformesAvancePage() {
     return (
       s === 'PRACTICA_EN_EJECUCION' ||
       s === 'ASIGNADO_FORMALMENTE' ||
+      s === 'ACEPTADO_ARL_PENDIENTE' ||
       s === 'FORMALIZADA' ||
       s === 'EN CURSO'
     );
@@ -173,8 +182,11 @@ export default function InformesAvancePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/v1/informes-avance', {
-        method: 'POST',
+      const endpoint = editingReportId ? `/api/v1/informes-avance/${editingReportId}` : '/api/v1/informes-avance';
+      const method = editingReportId ? 'PATCH' : 'POST';
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           practicaId: activePractice.id,
@@ -184,21 +196,28 @@ export default function InformesAvancePage() {
           periodoFin: periodoFin || undefined,
           documentUrl: documentUrl || undefined,
           observaciones: observaciones || undefined,
+          archivosAdjuntos: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
           estado: 'Radicado',
         }),
       });
 
       const data = await res.json();
 
-      if (res.status === 201 && data.success) {
-        setSuccessAlert('¡Informe de avance y bitácora radicados exitosamente! Se ha registrado con estado "Radicado" y fecha de entrega actualizada.');
+      if ((res.status === 201 || res.status === 200) && data.success) {
+        setSuccessAlert(
+          editingReportId
+            ? '¡Informe de avance actualizado exitosamente y horas de práctica sincronizadas!'
+            : '¡Informe de avance y bitácora radicados exitosamente! Se ha registrado con estado "Radicado" y fecha de entrega actualizada.'
+        );
         // Limpiar formulario
+        setEditingReportId(null);
         setHorasEjecutadas('');
         setDescripcionActividades('');
         setPeriodoInicio('');
         setPeriodoFin('');
         setDocumentUrl('');
         setObservaciones('');
+        setUploadedAttachments([]);
 
         // Actualizar datos
         loadStudentPractice();
@@ -210,6 +229,90 @@ export default function InformesAvancePage() {
       setErrorAlert(err.message || 'Error de conexión con el servidor.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadEvidenceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingFile(true);
+    setErrorAlert(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', 'informes');
+      const res = await fetch('/api/v1/upload/cv', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDocumentUrl(data.data.url);
+        setUploadedAttachments((prev) => [
+          ...prev,
+          {
+            nombreArchivo: data.data.fileName || file.name,
+            urlArchivo: data.data.url,
+            tipoMime: data.data.mimeType || file.type || 'application/pdf',
+            tamanoBytes: data.data.size || file.size || 1024,
+          },
+        ]);
+      } else {
+        setErrorAlert(data.error?.message || 'Error al subir el archivo de evidencia.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorAlert('Error de conexión al subir el archivo.');
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleSelectReportForEdit = (inf: AdvanceReportItem) => {
+    setEditingReportId(inf.id);
+    setHorasEjecutadas(String(inf.horasEjecutadas));
+    setDescripcionActividades(inf.descripcionActividades || '');
+    setPeriodoInicio(inf.periodoInicio ? new Date(inf.periodoInicio).toISOString().split('T')[0] : '');
+    setPeriodoFin(inf.periodoFin ? new Date(inf.periodoFin).toISOString().split('T')[0] : '');
+    setObservaciones(inf.observaciones || '');
+    setErrorAlert(null);
+    setSuccessAlert(null);
+  };
+
+  const handleApproveReport = async (reportId: string) => {
+    try {
+      const res = await fetch(`/api/v1/informes-avance/${reportId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Aprobado' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessAlert('Informe aprobado exitosamente.');
+        loadStudentPractice();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    if (!confirm('¿Confirma eliminar este informe de avance? Se recalcularán las horas de la práctica.')) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/informes-avance/${reportId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (editingReportId === reportId) {
+          setEditingReportId(null);
+        }
+        setSuccessAlert('Informe eliminado y horas de práctica actualizadas.');
+        loadStudentPractice();
+      } else {
+        setErrorAlert(data.error?.message || 'No fue posible eliminar el informe.');
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -335,14 +438,35 @@ export default function InformesAvancePage() {
           {/* Formulario de Radicación */}
           <div className="lg:col-span-7">
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <div className="border-b border-gray-100 pb-4 mb-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-red-600" />
-                  Radicar Nuevo Informe y Bitácora
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Registra tus horas ejecutadas (&gt; 0) y el detalle de actividades realizadas para seguimiento académico y empresarial.
-                </p>
+              <div className="border-b border-gray-100 pb-4 mb-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-red-600" />
+                    {editingReportId ? 'Editar Informe y Bitácora Seleccionada' : 'Radicar Nuevo Informe y Bitácora'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Registra tus horas ejecutadas (&gt; 0) y el detalle de actividades realizadas para seguimiento académico y empresarial.
+                  </p>
+                </div>
+                {editingReportId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingReportId(null);
+                      setHorasEjecutadas('');
+                      setDescripcionActividades('');
+                      setPeriodoInicio('');
+                      setPeriodoFin('');
+                      setDocumentUrl('');
+                      setObservaciones('');
+                      setUploadedAttachments([]);
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Cancelar Edición</span>
+                  </button>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -423,18 +547,35 @@ export default function InformesAvancePage() {
                 {/* URL de Evidencia o Soporte */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                    Enlace de Evidencia / Archivo Adjunto (Opcional)
+                    Enlace de Evidencia / Archivo Adjunto (PDF, Word o Imagen)
                   </label>
-                  <div className="relative">
-                    <Upload className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="url"
-                      disabled={!isActive || isSubmitting}
-                      value={documentUrl}
-                      onChange={(e) => setDocumentUrl(e.target.value)}
-                      placeholder="https://drive.google.com/... o enlace de expediente institucional"
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all disabled:opacity-50"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <Upload className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        disabled={!isActive || isSubmitting}
+                        value={documentUrl}
+                        onChange={(e) => setDocumentUrl(e.target.value)}
+                        placeholder="https://... o suba su archivo adjunto"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all disabled:opacity-50"
+                      />
+                    </div>
+                    <label
+                      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all shrink-0 ${
+                        !isActive || isSubmitting ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
+                      }`}
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{isUploadingFile ? 'Subiendo...' : 'Subir Archivo'}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                        disabled={!isActive || isSubmitting || isUploadingFile}
+                        onChange={handleUploadEvidenceFile}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
 
@@ -523,9 +664,34 @@ export default function InformesAvancePage() {
                       </p>
                       <div className="flex justify-between items-center text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                         <span>Entregado: {new Date(inf.fechaEntrega).toLocaleDateString()}</span>
-                        {inf.observaciones && (
-                          <span className="text-gray-500 italic">Con nota</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {currentUser && currentUser.role !== 'ESTUDIANTE' && inf.estado !== 'Aprobado' && (
+                            <button
+                              type="button"
+                              onClick={() => handleApproveReport(inf.id)}
+                              className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md"
+                            >
+                              Aprobar
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectReportForEdit(inf)}
+                            title="Editar informe"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReport(inf.id)}
+                            title="Eliminar informe"
+                            className="p-1 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-md"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

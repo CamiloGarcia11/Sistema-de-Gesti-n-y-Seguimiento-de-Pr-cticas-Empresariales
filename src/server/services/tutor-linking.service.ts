@@ -119,7 +119,7 @@ export class TutorLinkingService {
     const rawName = dto.nombre ?? dto.name ?? '';
     const rawCargo = dto.cargo ?? dto.position ?? '';
     const rawEmail = dto.correoInstitucional ?? dto.correo ?? dto.email ?? '';
-    const rawDocument = dto.documento ?? dto.documentNumber ?? '';
+    const rawDocument = dto.documento ?? dto.documentNumber ?? (dto as any).numeroDocumento ?? '';
     const rawDocType = dto.tipoDocumento ?? dto.documentType ?? 'CC';
     const rawPhone = dto.telefono ?? dto.phone ?? null;
     const rawCompanyId = dto.empresaId ?? dto.companyId ?? actor.companyId ?? '';

@@ -92,6 +92,7 @@ export function isPracticeActive(status?: string | null): boolean {
   const activeStatuses = [
     'ASIGNADO_FORMALMENTE',
     'PRACTICA_EN_EJECUCION',
+    'ACEPTADO_ARL_PENDIENTE',
     'FORMALIZADA',
     'EN CURSO',
     'EN_CURSO',

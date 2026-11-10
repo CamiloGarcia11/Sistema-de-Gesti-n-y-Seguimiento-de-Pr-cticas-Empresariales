@@ -725,7 +725,6 @@ export class PracticeRepository {
           orderBy: { createdAt: 'desc' },
         },
         followUpLogs: {
-          where: { deletedAt: null },
           orderBy: { fechaActividad: 'desc' },
         },
         statusHistory: {

@@ -33,6 +33,8 @@ import {
   UserCog,
   BadgeCheck,
   X,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { Role, UserStatus, UserResponseDTO } from '@/types';
 
@@ -403,6 +405,126 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error(err);
       setActionFeedback({ id: userId, message: 'Error de red', type: 'error' });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Estado y handlers para Edición y Eliminación de Usuarios
+  const [editingUser, setEditingUser] = useState<UserResponseDTO | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    documentType: 'CC',
+    documentNumber: '',
+    phone: '',
+    role: 'ESTUDIANTE' as Role,
+    studentCode: '',
+    academicAverage: '',
+    approvedCredits: '',
+    program: 'Ingeniería de Sistemas',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const handleOpenEditUser = (u: UserResponseDTO) => {
+    setEditingUser(u);
+    setEditError(null);
+    setEditFormData({
+      name: u.name || '',
+      email: u.email || '',
+      documentType: u.documentType || 'CC',
+      documentNumber: u.documentNumber || '',
+      phone: u.phone || '',
+      role: u.role,
+      studentCode: u.studentCode || '',
+      academicAverage: u.academicAverage !== null && u.academicAverage !== undefined ? String(u.academicAverage) : '',
+      approvedCredits: u.approvedCredits !== null && u.approvedCredits !== undefined ? String(u.approvedCredits) : '',
+      program: u.program || 'Ingeniería de Sistemas',
+    });
+  };
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsSavingEdit(true);
+    setEditError(null);
+
+    try {
+      const payload: Record<string, any> = {
+        name: editFormData.name,
+        email: editFormData.email,
+        documentType: editFormData.documentType,
+        documentNumber: editFormData.documentNumber,
+        phone: editFormData.phone,
+        role: editFormData.role,
+        program: editFormData.program,
+      };
+      if (editFormData.role === 'ESTUDIANTE') {
+        payload.studentCode = editFormData.studentCode || null;
+        payload.academicAverage = editFormData.academicAverage !== '' ? Number(editFormData.academicAverage) : null;
+        payload.approvedCredits = editFormData.approvedCredits !== '' ? Number(editFormData.approvedCredits) : null;
+      }
+
+      const res = await fetch(`/api/v1/usuarios/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setEditError(data.error?.message || 'Error al actualizar el usuario');
+        setIsSavingEdit(false);
+        return;
+      }
+
+      setActionFeedback({
+        id: editingUser.id,
+        message: 'Datos de usuario actualizados correctamente',
+        type: 'success',
+      });
+      setEditingUser(null);
+      loadUsers();
+    } catch (err) {
+      console.error(err);
+      setEditError('Error de conexión al guardar cambios.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`¿Confirma eliminar / dar de baja a "${userName}" del directorio institucional?`)) {
+      return;
+    }
+
+    setActionLoadingId(userId);
+    setActionFeedback(null);
+
+    try {
+      const res = await fetch(`/api/v1/usuarios/${userId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setActionFeedback({
+          id: userId,
+          message: data.message || 'Usuario dado de baja exitosamente',
+          type: 'success',
+        });
+        loadUsers();
+      } else {
+        setActionFeedback({
+          id: userId,
+          message: data.error?.message || 'No fue posible eliminar el usuario',
+          type: 'error',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setActionFeedback({ id: userId, message: 'Error de red al eliminar', type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
@@ -1284,7 +1406,17 @@ export default function AdminUsersPage() {
                             {isActive ? 'HABILITADO' : u.status === 'BLOQUEADO' ? 'BLOQUEADO' : 'INACTIVO'}
                           </span>
 
-                          {/* Action Button: Desactivar / Habilitar */}
+                          {/* Action Button: Editar / Desactivar / Habilitar / Eliminar */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditUser(u)}
+                            title="Editar datos del usuario"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all shadow-sm cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
+
                           {!isCurrentUser && (
                             <>
                               {isActive ? (
@@ -1322,6 +1454,16 @@ export default function AdminUsersPage() {
                                   )}
                                 </button>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u.id, u.name)}
+                                disabled={actionLoadingId === u.id}
+                                title="Eliminar / Dar de baja al usuario"
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-700 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </>
                           )}
                         </div>
@@ -1333,6 +1475,164 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
+
+        {/* Modal de Edición de Usuario */}
+        {editingUser && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-red-800 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Edit3 className="w-5 h-5" />
+                  <h3 className="font-bold text-base">Editar Usuario Institucional</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="text-red-100 hover:text-white p-1 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditUser} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                {editError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{editError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Correo Electrónico *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editFormData.email}
+                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                      className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
+                    <input
+                      type="text"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                      className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Tipo Doc.</label>
+                    <select
+                      value={editFormData.documentType}
+                      onChange={(e) => setEditFormData({ ...editFormData, documentType: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none bg-white"
+                    >
+                      <option value="CC">CC</option>
+                      <option value="TI">TI</option>
+                      <option value="CE">CE</option>
+                      <option value="PAS">PAS</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Número de Documento *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.documentNumber}
+                      onChange={(e) => setEditFormData({ ...editFormData, documentNumber: e.target.value })}
+                      className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Rol en el Sistema *</label>
+                  <select
+                    value={editFormData.role}
+                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as Role })}
+                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none bg-white"
+                  >
+                    <option value="ESTUDIANTE">Estudiante</option>
+                    <option value="DOCENTE_PRACTICA">Docente Supervisor</option>
+                    <option value="TUTOR_EMPRESARIAL">Tutor Empresarial</option>
+                    <option value="DIRECTOR_PROGRAMA">Coordinador / Director de Programa</option>
+                    <option value="ADMIN">Administrador del Sistema</option>
+                  </select>
+                </div>
+
+                {editFormData.role === 'ESTUDIANTE' && (
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Código Estudiantil</label>
+                      <input
+                        type="text"
+                        value={editFormData.studentCode}
+                        onChange={(e) => setEditFormData({ ...editFormData, studentCode: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Promedio (0-5)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="5"
+                        value={editFormData.academicAverage}
+                        onChange={(e) => setEditFormData({ ...editFormData, academicAverage: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Créditos Aprob.</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="250"
+                        value={editFormData.approvedCredits}
+                        onChange={(e) => setEditFormData({ ...editFormData, approvedCredits: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="px-5 py-2 text-xs font-bold text-white bg-red-700 hover:bg-red-800 rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {isSavingEdit ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

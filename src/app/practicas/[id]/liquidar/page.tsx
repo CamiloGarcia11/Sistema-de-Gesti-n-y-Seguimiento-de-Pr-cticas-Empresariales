@@ -28,6 +28,8 @@ import {
   Lock,
   ExternalLink,
   Info,
+  Edit3,
+  X,
 } from 'lucide-react';
 import { LiquidationSummaryDTO, LiquidationResultDTO, UserResponseDTO } from '@/types';
 
@@ -116,6 +118,70 @@ export default function LiquidacionPracticaPage() {
 
   const isCoordinatorOrAdmin =
     currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN';
+
+  // Modal de Registro / Actualización de Evaluaciones y Prerrequisitos
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evalForm, setEvalForm] = useState({
+    tutorScore: '4.5',
+    tutorComments: 'Desempeño sobresaliente en las actividades técnicas y empresariales asignadas.',
+    teacherScore: '4.4',
+    teacherComments: 'Cumplimiento satisfactorio de objetivos académicos y sustentación final.',
+    completedHours: '320',
+    approveWorkPlan: true,
+  });
+  const [isSavingEval, setIsSavingEval] = useState(false);
+
+  const handleOpenEvalModal = () => {
+    if (summary) {
+      const tutorItem = summary.evaluationsBreakdown.find((e) => e.type === 'FINAL_TUTOR');
+      const teacherItem = summary.evaluationsBreakdown.find((e) => e.type === 'FINAL_DOCENTE');
+      setEvalForm({
+        tutorScore: tutorItem?.score !== null && tutorItem?.score !== undefined ? String(tutorItem.score) : '4.5',
+        tutorComments:
+          tutorItem?.qualitativeComments ||
+          'Desempeño sobresaliente en las actividades técnicas y empresariales asignadas.',
+        teacherScore:
+          teacherItem?.score !== null && teacherItem?.score !== undefined ? String(teacherItem.score) : '4.4',
+        teacherComments:
+          teacherItem?.qualitativeComments ||
+          'Cumplimiento satisfactorio de objetivos académicos y sustentación final.',
+        completedHours: String(summary.hoursBreakdown.completedHours || summary.hoursBreakdown.requiredHours || 320),
+        approveWorkPlan: true,
+      });
+    }
+    setShowEvalModal(true);
+  };
+
+  const handleSaveEvaluations = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingEval(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/v1/practicas/${practiceId}/evaluaciones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tutorScore: parseFloat(evalForm.tutorScore),
+          tutorComments: evalForm.tutorComments,
+          teacherScore: parseFloat(evalForm.teacherScore),
+          teacherComments: evalForm.teacherComments,
+          completedHours: parseInt(evalForm.completedHours, 10),
+          approveWorkPlan: evalForm.approveWorkPlan,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowEvalModal(false);
+        await loadSummary();
+      } else {
+        setErrorMsg(data.error?.message || 'Error al registrar las evaluaciones');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error de conexión al guardar evaluaciones');
+    } finally {
+      setIsSavingEval(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -536,23 +602,159 @@ export default function LiquidacionPracticaPage() {
                 </div>
 
                 {isCoordinatorOrAdmin && (
-                  <button
-                    onClick={() => setShowConfirmModal(true)}
-                    disabled={!summary.isLiquidable || summary.isAlreadyLiquidated}
-                    className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center gap-2 ${
-                      summary.isLiquidable && !summary.isAlreadyLiquidated
-                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer hover:shadow'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                    }`}
-                  >
-                    <Award className="w-4 h-4" />
-                    Liquidar y Finalizar Práctica
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {!summary.isAlreadyLiquidated && (
+                      <button
+                        type="button"
+                        onClick={handleOpenEvalModal}
+                        className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                      >
+                        <Edit3 className="w-4 h-4 text-red-700" />
+                        <span>Registrar / Editar Evaluaciones</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setShowConfirmModal(true)}
+                      disabled={!summary.isLiquidable || summary.isAlreadyLiquidated}
+                      className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center gap-2 ${
+                        summary.isLiquidable && !summary.isAlreadyLiquidated
+                          ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer hover:shadow'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                      }`}
+                    >
+                      <Award className="w-4 h-4" />
+                      Liquidar y Finalizar Práctica
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         ) : null}
+
+        {/* Modal de Confirmación y Asentamiento de Nota (Criterio 3) */}
+        {showEvalModal && summary && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+              <div className="bg-gradient-to-r from-red-800 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-4 h-4" />
+                  <h3 className="text-sm font-bold">Registrar / Actualizar Evaluaciones y Prerrequisitos</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEvalModal(false)}
+                  className="text-red-100 hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEvaluations} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Nota Tutor Empresarial (50%) [0.0 - 5.0] *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      required
+                      value={evalForm.tutorScore}
+                      onChange={(e) => setEvalForm({ ...evalForm, tutorScore: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Nota Docente Supervisor (30%) [0.0 - 5.0] *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      required
+                      value={evalForm.teacherScore}
+                      onChange={(e) => setEvalForm({ ...evalForm, teacherScore: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Concepto Cualitativo del Tutor Empresarial
+                  </label>
+                  <input
+                    type="text"
+                    value={evalForm.tutorComments}
+                    onChange={(e) => setEvalForm({ ...evalForm, tutorComments: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Concepto Cualitativo del Docente Supervisor
+                  </label>
+                  <input
+                    type="text"
+                    value={evalForm.teacherComments}
+                    onChange={(e) => setEvalForm({ ...evalForm, teacherComments: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Horas Ejecutadas Acumuladas (20%) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      required
+                      value={evalForm.completedHours}
+                      onChange={(e) => setEvalForm({ ...evalForm, completedHours: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-bold"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 pt-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={evalForm.approveWorkPlan}
+                      onChange={(e) => setEvalForm({ ...evalForm, approveWorkPlan: e.target.checked })}
+                      className="w-4 h-4 accent-red-700 rounded"
+                    />
+                    <span>Aprobar Plan de Trabajo Dual</span>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowEvalModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEval}
+                    className="px-5 py-2 text-xs font-bold text-white bg-red-700 hover:bg-red-800 rounded-xl shadow-sm"
+                  >
+                    {isSavingEval ? 'Guardando...' : 'Guardar Evaluaciones'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Confirmación y Asentamiento de Nota (Criterio 3) */}
         {showConfirmModal && summary && (
