@@ -14,6 +14,11 @@ import {
   practiceRepository,
 } from '@/server/repositories/practice.repository';
 import {
+  ArlAlertError,
+  calculateCalendarDaysUntil,
+  getArlAlertService,
+} from '@/server/services/arl-alert.service';
+import {
   AuthenticatedUser,
   RadicarInformeDTO,
   RadicarInformeResultDTO,
@@ -215,6 +220,44 @@ export class PracticeFollowUpService {
         403,
         'currentStatus'
       );
+    }
+
+    // 7.1. Criterio 3 (HU Alertas ARL): Bloqueo de registro de bitácoras o avances por ARL vencida
+    const directArlStatus = (practice as any).arlStatus;
+    const directArlExpiration = (practice as any).arlExpirationDate
+      ? new Date((practice as any).arlExpirationDate)
+      : null;
+
+    if (
+      directArlStatus === 'VENCIDO' ||
+      (directArlExpiration &&
+        !Number.isNaN(directArlExpiration.getTime()) &&
+        calculateCalendarDaysUntil(new Date(), directArlExpiration) < 0 &&
+        directArlStatus !== 'PENDIENTE_REVISION')
+    ) {
+      throw new PracticeFollowUpError(
+        'No es posible registrar bitácoras o informes de avance porque su afiliación a ARL se encuentra VENCIDA. Por favor cargue la nueva constancia de ARL para desbloquear el registro.',
+        'ARL_EXPIRED_BLOCK',
+        403,
+        'arlExpirationDate',
+        'chk_arl_vigente'
+      );
+    }
+
+    if (this.practiceRepo === practiceRepository) {
+      try {
+        await getArlAlertService().assertPracticeArlAllowsReports(practice.id);
+      } catch (arlErr: unknown) {
+        if (arlErr instanceof ArlAlertError && arlErr.code === 'ARL_EXPIRED_BLOCK') {
+          throw new PracticeFollowUpError(
+            arlErr.message,
+            arlErr.code,
+            arlErr.statusCode,
+            arlErr.field,
+            arlErr.constraint
+          );
+        }
+      }
     }
 
     // 8. Criterio 1: Radicación exitosa en informes_avance y bitacoras_seguimiento

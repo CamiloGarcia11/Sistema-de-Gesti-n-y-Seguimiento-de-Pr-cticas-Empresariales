@@ -24,8 +24,10 @@ import {
   Edit3,
   Trash2,
   X,
+  BellRing,
+  ShieldCheck,
 } from 'lucide-react';
-import { UserResponseDTO } from '@/types';
+import { UserResponseDTO, ArlStudentAlertItemDTO } from '@/types';
 
 interface PracticeData {
   id: string;
@@ -77,6 +79,18 @@ export default function InformesAvancePage() {
   const [errorAlert, setErrorAlert] = useState<string | null>(null);
   const [successAlert, setSuccessAlert] = useState<string | null>(null);
 
+  // Estado de ARL y Renovación (HU Alertas Automáticas ARL - Criterio 2, 3 y RN02)
+  const [studentArlAlert, setStudentArlAlert] = useState<ArlStudentAlertItemDTO | null>(null);
+  const [isArlModalOpen, setIsArlModalOpen] = useState(false);
+  const [arlDocumentUrl, setArlDocumentUrl] = useState('');
+  const [arlExpirationDate, setArlExpirationDate] = useState('');
+  const [arlPolicyNumber, setArlPolicyNumber] = useState('');
+  const [arlEntityName, setArlEntityName] = useState('Positiva ARL');
+  const [isUploadingArlFile, setIsUploadingArlFile] = useState(false);
+  const [isSubmittingArl, setIsSubmittingArl] = useState(false);
+  const [arlError, setArlError] = useState<string | null>(null);
+  const [arlSuccess, setArlSuccess] = useState<string | null>(null);
+
   // Cargar usuario autenticado
   useEffect(() => {
     fetch('/api/v1/auth/me')
@@ -112,6 +126,20 @@ export default function InformesAvancePage() {
         const dataInformes = await resInformes.json();
         if (dataInformes.success && Array.isArray(dataInformes.data)) {
           setInformes(dataInformes.data);
+        }
+
+        // Consultar estado y alertas de ARL (GET /api/v1/practicas/alertas/arl)
+        try {
+          const resArl = await fetch(`/api/v1/practicas/alertas/arl?studentId=${p.studentId || p.student?.id || ''}`);
+          const dataArl = await resArl.json();
+          if (dataArl.success && dataArl.data?.items?.length > 0) {
+            const matched =
+              dataArl.data.items.find((it: ArlStudentAlertItemDTO) => it.practiceId === p.id) ||
+              dataArl.data.items[0];
+            setStudentArlAlert(matched);
+          }
+        } catch (arlErr) {
+          console.error(arlErr);
         }
       } else {
         // Fallback demo practice if no backend seed
@@ -149,7 +177,73 @@ export default function InformesAvancePage() {
     );
   };
 
-  const isActive = activePractice ? isPracticeActiveStatus(activePractice.currentStatus) : false;
+  const isArlExpiredBlocked = Boolean(
+    studentArlAlert?.arlStatus === 'VENCIDO' || studentArlAlert?.isBlockedFromReports
+  );
+  const isActive =
+    (activePractice ? isPracticeActiveStatus(activePractice.currentStatus) : false) &&
+    !isArlExpiredBlocked;
+
+  const handleUploadArlSupportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingArlFile(true);
+    setArlError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', 'arl');
+      const res = await fetch('/api/v1/upload/cv', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.success && data.data?.url) {
+        setArlDocumentUrl(data.data.url);
+      } else {
+        setArlError(data.error?.message || 'Error al subir el certificado PDF de ARL.');
+      }
+    } catch (err) {
+      console.error(err);
+      setArlError('Error de conexión al subir el archivo de ARL.');
+    } finally {
+      setIsUploadingArlFile(false);
+    }
+  };
+
+  const handleSubmitArlRenewal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetStudentId = studentArlAlert?.studentId || currentUser?.id;
+    if (!targetStudentId) return;
+    setIsSubmittingArl(true);
+    setArlError(null);
+    setArlSuccess(null);
+    try {
+      const res = await fetch(`/api/v1/estudiantes/${targetStudentId}/arl/documento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          practiceId: activePractice?.id,
+          documentUrl: arlDocumentUrl,
+          expirationDate: arlExpirationDate,
+          policyNumber: arlPolicyNumber,
+          arlEntityName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setArlError(data.error?.message || 'Error al registrar la renovación de ARL.');
+        return;
+      }
+      setArlSuccess(
+        data.message ||
+          'Certificado de ARL cargado exitosamente en estado "Pendiente de revisión" (RN02). Se ha desbloqueado el registro de informes.'
+      );
+      await loadStudentPractice();
+    } catch (err) {
+      console.error(err);
+      setArlError('Error de conexión al cargar la renovación de ARL.');
+    } finally {
+      setIsSubmittingArl(false);
+    }
+  };
 
   // Manejo de envío de radicación
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,6 +435,65 @@ export default function InformesAvancePage() {
             </div>
           </div>
         </div>
+
+        {/* Banner de Estado y Alertas Automáticas de ARL en el Panel del Estudiante (Criterios 1, 2, 3 y RN02) */}
+        {studentArlAlert && (
+          <div
+            className={`mb-6 p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              studentArlAlert.arlStatus === 'VENCIDO'
+                ? 'bg-red-50 border-red-300 text-red-900'
+                : studentArlAlert.arlStatus === 'PROXIMO_A_VENCER'
+                  ? 'bg-amber-50 border-amber-300 text-amber-900'
+                  : studentArlAlert.arlStatus === 'PENDIENTE_REVISION'
+                    ? 'bg-blue-50 border-blue-300 text-blue-900'
+                    : studentArlAlert.arlStatus === 'SIN_AFILIACION'
+                      ? 'bg-rose-50 border-rose-300 text-rose-900'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <BellRing className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider">
+                    Estado Cobertura ARL: {studentArlAlert.arlSemaphoreLabel}
+                  </span>
+                  {studentArlAlert.arlExpirationDate && (
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/70 border border-current/20">
+                      Vigencia: {new Date(studentArlAlert.arlExpirationDate).toISOString().split('T')[0]}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs leading-relaxed">
+                  {studentArlAlert.studentBannerMessage ||
+                    studentArlAlert.alertMessage ||
+                    'Su certificado de afiliación a Riesgos Laborales (ARL) se encuentra vigente y validado.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setArlDocumentUrl(studentArlAlert.arlSupportUrl || '');
+                setArlExpirationDate(
+                  studentArlAlert.arlExpirationDate
+                    ? new Date(studentArlAlert.arlExpirationDate).toISOString().split('T')[0]
+                    : ''
+                );
+                setArlPolicyNumber(studentArlAlert.arlPolicyNumber || '');
+                setArlEntityName(studentArlAlert.arlEntityName || 'Positiva ARL');
+                setArlError(null);
+                setArlSuccess(null);
+                setIsArlModalOpen(true);
+              }}
+              className="px-4 py-2 text-xs font-bold bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+            >
+              <Upload className="w-3.5 h-3.5 text-red-700" />
+              <span>Renovar / Actualizar Soporte ARL</span>
+            </button>
+          </div>
+        )}
 
         {/* Alertas */}
         {errorAlert && (
@@ -700,6 +853,135 @@ export default function InformesAvancePage() {
             </div>
           </div>
         </div>
+
+        {/* MODAL: SUBIDA / RENOVACIÓN DE SOPORTE ARL DEL ESTUDIANTE (POST /api/v1/estudiantes/{id}/arl/documento - RN02) */}
+        {isArlModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-gray-200 shadow-2xl space-y-4">
+              <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1">
+                    Cobertura Riesgos Laborales • RN02
+                  </span>
+                  <h3 className="text-base font-extrabold text-gray-900">
+                    Cargar / Renovar Certificado de ARL
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Al cargar su nuevo soporte de ARL, el estado pasará a <strong>Pendiente de revisión</strong> hasta que la coordinación valide su autenticidad (RN02).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsArlModalOpen(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {arlError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span>{arlError}</span>
+                </div>
+              )}
+
+              {arlSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{arlSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitArlRenewal} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Soporte o Certificado ARL (PDF o Imagen) <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={arlDocumentUrl}
+                      onChange={(e) => setArlDocumentUrl(e.target.value)}
+                      placeholder="/uploads/arl/certificado.pdf o suba su archivo"
+                      className="flex-1 px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <label className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl cursor-pointer shrink-0">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingArlFile ? 'Subiendo...' : 'Subir PDF'}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        disabled={isUploadingArlFile}
+                        onChange={handleUploadArlSupportFile}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Nueva Fecha de Vigencia / Vencimiento <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={arlExpirationDate}
+                      onChange={(e) => setArlExpirationDate(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Número de Póliza / Radicado
+                    </label>
+                    <input
+                      type="text"
+                      value={arlPolicyNumber}
+                      onChange={(e) => setArlPolicyNumber(e.target.value)}
+                      placeholder="Ej. POL-ARL-2026-01"
+                      className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Administradora de Riesgos Laborales (ARL)
+                  </label>
+                  <input
+                    type="text"
+                    value={arlEntityName}
+                    onChange={(e) => setArlEntityName(e.target.value)}
+                    placeholder="Ej. Positiva Compañía de Seguros / Sura ARL"
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsArlModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingArl || !arlDocumentUrl || !arlExpirationDate}
+                    className="px-5 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{isSubmittingArl ? 'Guardando...' : 'Confirmar Carga de Soporte ARL'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
