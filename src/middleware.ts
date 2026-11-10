@@ -29,12 +29,14 @@ export function middleware(request: NextRequest) {
   const isStudentsRoute = pathname.startsWith('/estudiantes');
   const isPeriodosRoute = pathname.startsWith('/periodos');
   const isDashboardRoute = pathname.startsWith('/dashboard'); // NUEVO
+  const isPracticasRoute = pathname.startsWith('/practicas');
   const isProtectedAppRoute =
     pathname.startsWith('/vacantes') ||
     pathname.startsWith('/empresas') ||
     pathname.startsWith('/estudiante') ||
     isPeriodosRoute ||
     isDashboardRoute || // NUEVO
+    isPracticasRoute ||
     isStudentsRoute ||
     isPageAdminRoute;
 
@@ -113,9 +115,31 @@ export function middleware(request: NextRequest) {
 
   // NUEVO: dashboard general de prácticas y reportes, validar rol DIRECTOR_PROGRAMA o ADMIN
   if (isDashboardRoute) {
+        const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+  // Si es ruta de liquidación de práctica (RN01), solo Director o Admin
+  if (pathname.includes('/liquidar')) {
     const isAuthorized =
       payload.role === 'DIRECTOR_PROGRAMA' ||
       payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  } else if (isPracticasRoute) {
+    // Otras vistas de prácticas: docentes, director, tutor, admin o estudiante
+    const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN' ||
+      payload.role === 'DOCENTE_PRACTICA' ||
+      payload.role === 'TUTOR_EMPRESARIAL' ||
+      payload.role === 'ESTUDIANTE';
 
     if (!isAuthorized) {
       return NextResponse.redirect(new URL('/', request.url));
@@ -160,5 +184,6 @@ export const config = {
     '/estudiante/:path*',
     '/periodos/:path*',
     '/dashboard/:path*', // NUEVO
+    '/practicas/:path*',
   ],
 };

@@ -15,6 +15,7 @@ import {
   FileText,
   Briefcase,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { AcademicPeriodResponseDTO, UserResponseDTO } from '@/types';
 
@@ -219,6 +220,37 @@ export default function PeriodosLectivosPage() {
         setFeedback({
           type: 'error',
           message: json.error?.message || 'No fue posible actualizar el estado del periodo.',
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeletePeriod = async (period: AcademicPeriodResponseDTO) => {
+    if (!canManagePeriods) return;
+    if (!confirm(`¿Confirma eliminar / dar de baja el periodo lectivo "${period.codigo} - ${period.nombre}"?`)) {
+      return;
+    }
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/v1/periodos-academicos/${period.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setFeedback({
+          type: 'success',
+          message: `El periodo ${period.codigo} fue dado de baja correctamente.`,
+        });
+        if (editingPeriodId === period.id) {
+          resetForm();
+        }
+        await loadPeriods();
+      } else {
+        setFeedback({
+          type: 'error',
+          message: json.error?.message || 'No fue posible eliminar el periodo lectivo.',
         });
       }
     } catch (error) {
@@ -656,6 +688,14 @@ export default function PeriodosLectivosPage() {
                                 <span>Reabrir</span>
                               </>
                             )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePeriod(period)}
+                            title="Dar de baja periodo lectivo"
+                            className="p-1.5 text-slate-400 hover:text-red-700 bg-white border border-slate-200 hover:border-red-200 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       )}

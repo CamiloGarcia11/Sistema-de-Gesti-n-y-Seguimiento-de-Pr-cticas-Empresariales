@@ -31,6 +31,8 @@ import {
   Check,
   Mail,
   Phone,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import {
   VacancyResponseDTO,
@@ -312,10 +314,97 @@ export default function VacantesPage() {
       const res = await fetch('/api/v1/empresas?limit=50');
       const data = await res.json();
       if (data.success && data.data) {
-        setCompaniesList(data.data.companies || []);
+        setCompaniesList(data.data.items || data.data.companies || []);
       }
     } catch (e) {
       console.error('Error cargando lista de empresas:', e);
+    }
+  };
+
+  const [editingVacancyId, setEditingVacancyId] = useState<string | null>(null);
+
+  const handleOpenEditVacancy = (vac: VacancyResponseDTO) => {
+    setEditingVacancyId(vac.id);
+    setNewVacancy({
+      companyId: vac.companyId || currentUser?.companyId || '',
+      title: vac.title || '',
+      program: vac.program || 'Ingeniería de Sistemas',
+      academicPeriod: vac.academicPeriod || '2026-1',
+      vacanciesCount: vac.vacanciesCount || 1,
+      description: vac.description || '',
+      requirements: vac.requirements || '',
+      location: vac.company?.city || 'Cúcuta',
+      startDate: vac.startDate ? new Date(vac.startDate).toISOString().split('T')[0] : '',
+      endDate: vac.endDate ? new Date(vac.endDate).toISOString().split('T')[0] : '',
+      status: (vac.status === 'BORRADOR' ? 'BORRADOR' : 'PUBLICADA') as 'BORRADOR' | 'PUBLICADA',
+    });
+    setCreateError(null);
+    setCreateSuccess(null);
+    if (!currentUser?.companyId) {
+      loadCompaniesList();
+    }
+    setIsCreateModalOpen(true);
+  };
+
+  const handleDeleteVacancy = async (vacancyId: string, title: string) => {
+    if (!confirm(`¿Confirma cancelar / dar de baja la convocatoria "${title}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/vacantes/${vacancyId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadCompanyVacancies();
+        loadVacancies();
+      } else {
+        alert(data.error?.message || 'Error al cancelar la convocatoria');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleWithdrawApplication = async (applicationId: string, vacancyTitle: string) => {
+    if (!confirm(`¿Confirma retirar su postulación a "${vacancyTitle}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/postulaciones/${applicationId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadMyApplications();
+        loadVacancies();
+        loadEligibility();
+      } else {
+        alert(data.error?.message || 'No fue posible retirar la postulación');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleReplaceApplicationCv = async (applicationId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', 'cv');
+      const uploadRes = await fetch('/api/v1/upload/cv', { method: 'POST', body: fd });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.success) {
+        alert(uploadData.error?.message || 'Error al subir el nuevo archivo de Hoja de Vida');
+        return;
+      }
+      const patchRes = await fetch(`/api/v1/postulaciones/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cvUrl: uploadData.data.url }),
+      });
+      const patchData = await patchRes.json();
+      if (patchRes.ok && patchData.success) {
+        loadMyApplications();
+      } else {
+        alert(patchData.error?.message || 'Error al actualizar la Hoja de Vida');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -332,6 +421,7 @@ export default function VacantesPage() {
 
   // Manejo de apertura de modal de creación de convocatoria
   const handleOpenCreateModal = () => {
+    setEditingVacancyId(null);
     setNewVacancy({
       companyId: currentUser?.companyId || '',
       title: '',
@@ -399,8 +489,11 @@ export default function VacantesPage() {
         status: statusToSet,
       };
 
-      const res = await fetch('/api/v1/vacantes', {
-        method: 'POST',
+      const endpoint = editingVacancyId ? `/api/v1/vacantes/${editingVacancyId}` : '/api/v1/vacantes';
+      const method = editingVacancyId ? 'PUT' : 'POST';
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -412,7 +505,9 @@ export default function VacantesPage() {
       }
 
       setCreateSuccess(
-        statusToSet === 'PUBLICADA'
+        editingVacancyId
+          ? '¡Convocatoria actualizada exitosamente!'
+          : statusToSet === 'PUBLICADA'
           ? '¡Convocatoria creada y publicada exitosamente! Ya se encuentra disponible para la captación de practicantes idóneos.'
           : '¡Convocatoria guardada exitosamente en estado BORRADOR! Podrás publicarla una vez cuentes con convenio institucional activo.'
       );
@@ -926,6 +1021,26 @@ export default function VacantesPage() {
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         )}
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-xl transition-all cursor-pointer">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Actualizar CV</span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => handleReplaceApplicationCv(app.id, e)}
+                            className="hidden"
+                          />
+                        </label>
+                        {app.status === 'POSTULADO' && (
+                          <button
+                            type="button"
+                            onClick={() => handleWithdrawApplication(app.id, app.vacancy?.title || 'Convocatoria')}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Retirar</span>
+                          </button>
+                        )}
                         <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl">
                           En Preselección
                         </span>
@@ -1059,13 +1174,32 @@ export default function VacantesPage() {
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                          <button
-                            onClick={() => handleOpenApplicantsModal(vac)}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                          >
-                            <Users className="w-3.5 h-3.5" />
-                            <span>Ver Candidatos ({vac.applicationsCount})</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenApplicantsModal(vac)}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                            >
+                              <Users className="w-3.5 h-3.5" />
+                              <span>Ver Candidatos ({vac.applicationsCount})</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditVacancy(vac)}
+                              title="Editar convocatoria"
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteVacancy(vac.id, vac.title)}
+                              title="Cancelar / Dar de baja convocatoria"
+                              className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
 
                           {isDraft && (
                             <button

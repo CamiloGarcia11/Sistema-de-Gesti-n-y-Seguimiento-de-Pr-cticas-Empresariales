@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 // ==============================================================================
-// SIGETRAP - Controlador de Detalle y Edición de Convocatoria
+// SIGETRAP - Controlador de Detalle, Edición y Baja de Convocatoria
 // Capa de Controladores (Route Handler RNF11)
 // Endpoints:
-//   - GET /api/v1/vacantes/[id]  (Detalle de la vacante)
-//   - PUT /api/v1/vacantes/[id]  (Actualización de la convocatoria)
+//   - GET    /api/v1/vacantes/[id]  (Detalle de la vacante)
+//   - PUT    /api/v1/vacantes/[id]  (Actualización de la convocatoria)
+//   - PATCH  /api/v1/vacantes/[id]  (Actualización parcial de la convocatoria)
+//   - DELETE /api/v1/vacantes/[id]  (Baja lógica / cancelación segura de vacante)
 // ==============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +20,7 @@ import {
   vacancyManagementService,
   VacancyValidationError,
 } from '@/server/services/vacancy-management.service';
+import { prisma } from '@/lib/prisma';
 import { ApiResponse } from '@/types';
 import { z } from 'zod';
 
@@ -144,6 +147,88 @@ export async function PUT(
         error: {
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Error inesperado al actualizar la convocatoria',
+        },
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+): Promise<NextResponse<ApiResponse>> {
+  return PUT(req, ctx);
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse<ApiResponse>> {
+  try {
+    const actor = getAuthenticatedUser(req);
+    if (
+      !actor ||
+      (actor.role !== 'ADMIN' &&
+        actor.role !== 'DIRECTOR_PROGRAMA' &&
+        actor.role !== 'TUTOR_EMPRESARIAL')
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'No tiene permisos para eliminar o cancelar esta convocatoria',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+    const existing = await prisma.vacancy.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VACANCY_NOT_FOUND',
+            message: 'La convocatoria especificada no existe o ya fue dada de baja',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 }
+      );
+    }
+
+    // Baja lógica para preservar postulaciones y prácticas asociadas sin error 500
+    await prisma.vacancy.update({
+      where: { id },
+      data: {
+        status: 'CANCELADA',
+        deletedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Convocatoria "${existing.title}" dada de baja exitosamente.`,
+        data: { id, deleted: true },
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    console.error('[DELETE /api/v1/vacantes/[id]] Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al dar de baja la convocatoria',
         },
         timestamp: new Date().toISOString(),
       },

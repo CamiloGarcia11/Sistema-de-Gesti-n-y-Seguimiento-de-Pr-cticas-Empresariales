@@ -28,6 +28,10 @@ import {
   Users,
   UserPlus,
   IdCard,
+  Edit3,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react';
 import { CompanyResponseDTO, CompanyTutorResponseDTO, UserResponseDTO } from '@/types';
 
@@ -357,6 +361,203 @@ export default function EmpresasPage() {
     navigator.clipboard.writeText(text);
     setCopiedNit(text);
     setTimeout(() => setCopiedNit(null), 2000);
+  };
+
+  // Estados para Edición y Baja de Empresa + Convenio (HU07 / HU08)
+  const [editingCompany, setEditingCompany] = useState<CompanyResponseDTO | null>(null);
+  const [editCompanyData, setEditCompanyData] = useState({
+    nit: '',
+    businessName: '',
+    legalRepresentative: '',
+    contactEmail: '',
+    contactPhone: '',
+    address: '',
+    city: '',
+    agreementNumber: '',
+    agreementStartDate: '',
+    agreementEndDate: '',
+    agreementStatus: 'VIGENTE',
+    agreementDocumentUrl: '',
+  });
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const [editCompanyError, setEditCompanyError] = useState<string | null>(null);
+  const [isUploadingAgreementDoc, setIsUploadingAgreementDoc] = useState(false);
+
+  const handleOpenEditCompany = (company: CompanyResponseDTO) => {
+    setEditingCompany(company);
+    setEditCompanyError(null);
+    setEditCompanyData({
+      nit: company.nit || '',
+      businessName: company.businessName || '',
+      legalRepresentative: company.legalRepresentative || '',
+      contactEmail: company.contactEmail || '',
+      contactPhone: company.contactPhone || '',
+      address: company.address || '',
+      city: company.city || 'Cúcuta',
+      agreementNumber: company.activeAgreement?.agreementNumber || `CONV-UFPS-${new Date().getFullYear()}-${company.nit.slice(0, 4)}`,
+      agreementStartDate: company.activeAgreement?.startDate
+        ? new Date(company.activeAgreement.startDate).toISOString().split('T')[0]
+        : '2026-01-15',
+      agreementEndDate: company.activeAgreement?.endDate
+        ? new Date(company.activeAgreement.endDate).toISOString().split('T')[0]
+        : '2028-12-31',
+      agreementStatus: company.activeAgreement?.status || 'VIGENTE',
+      agreementDocumentUrl: (company.activeAgreement as any)?.documentUrl || '',
+    });
+  };
+
+  const handleUploadAgreementPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAgreementDoc(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', 'convenios');
+      const res = await fetch('/api/v1/upload/cv', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEditCompanyData((prev) => ({ ...prev, agreementDocumentUrl: data.data.url }));
+      } else {
+        setEditCompanyError(data.error?.message || 'Error al subir el documento de convenio');
+      }
+    } catch (err) {
+      console.error(err);
+      setEditCompanyError('Error al subir el archivo de convenio');
+    } finally {
+      setIsUploadingAgreementDoc(false);
+    }
+  };
+
+  const handleSaveEditCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCompany) return;
+    setIsSavingCompany(true);
+    setEditCompanyError(null);
+
+    try {
+      const payload: Record<string, any> = {
+        nit: editCompanyData.nit,
+        businessName: editCompanyData.businessName,
+        legalRepresentative: editCompanyData.legalRepresentative,
+        contactEmail: editCompanyData.contactEmail,
+        contactPhone: editCompanyData.contactPhone,
+        address: editCompanyData.address,
+        city: editCompanyData.city,
+      };
+      if (editCompanyData.agreementNumber.trim()) {
+        payload.agreement = {
+          agreementNumber: editCompanyData.agreementNumber.trim(),
+          startDate: editCompanyData.agreementStartDate,
+          endDate: editCompanyData.agreementEndDate,
+          status: editCompanyData.agreementStatus,
+          documentUrl: editCompanyData.agreementDocumentUrl || null,
+        };
+      }
+
+      const res = await fetch(`/api/v1/empresas/${editingCompany.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setEditCompanyError(data.error?.message || 'No fue posible actualizar la empresa');
+        return;
+      }
+
+      setEditingCompany(null);
+      loadCompanies();
+    } catch (err) {
+      console.error(err);
+      setEditCompanyError('Error de red al guardar los cambios');
+    } finally {
+      setIsSavingCompany(false);
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: string, businessName: string) => {
+    if (!confirm(`¿Confirma dar de baja a la empresa "${businessName}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/empresas/${companyId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadCompanies();
+      } else {
+        alert(data.error?.message || 'Error al dar de baja la empresa');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Estados para Edición y Baja de Tutor Empresarial (HU09)
+  const [editingTutor, setEditingTutor] = useState<CompanyTutorResponseDTO | null>(null);
+  const [editTutorData, setEditTutorData] = useState({
+    nombre: '',
+    cargo: '',
+    correo: '',
+    telefono: '',
+    numeroDocumento: '',
+    estado: 'Activo',
+  });
+  const [isSavingTutor, setIsSavingTutor] = useState(false);
+  const [editTutorError, setEditTutorError] = useState<string | null>(null);
+
+  const handleOpenEditTutor = (tutor: CompanyTutorResponseDTO) => {
+    setEditingTutor(tutor);
+    setEditTutorError(null);
+    setEditTutorData({
+      nombre: tutor.nombre || '',
+      cargo: tutor.cargo || '',
+      correo: tutor.correo || '',
+      telefono: tutor.telefono || '',
+      numeroDocumento: tutor.documento || (tutor as any).numeroDocumento || '',
+      estado: tutor.estado || 'Activo',
+    });
+  };
+
+  const handleSaveEditTutor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTutor) return;
+    setIsSavingTutor(true);
+    setEditTutorError(null);
+    try {
+      const res = await fetch(`/api/v1/tutores/${editingTutor.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editTutorData),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setEditTutorError(data.error?.message || 'Error al actualizar el tutor');
+        return;
+      }
+      setEditingTutor(null);
+      loadCompanyTutors(selectedTutorCompanyId || undefined);
+      loadCompanies();
+    } catch (err) {
+      console.error(err);
+      setEditTutorError('Error de conexión al guardar');
+    } finally {
+      setIsSavingTutor(false);
+    }
+  };
+
+  const handleDeleteTutor = async (tutorId: string, nombre: string) => {
+    if (!confirm(`¿Confirma desvincular / dar de baja al supervisor "${nombre}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/tutores/${tutorId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadCompanyTutors(selectedTutorCompanyId || undefined);
+        loadCompanies();
+      } else {
+        alert(data.error?.message || 'Error al dar de baja al tutor');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const isStudent = currentUser?.role === 'ESTUDIANTE';
@@ -876,21 +1077,38 @@ export default function EmpresasPage() {
 
                         {/* Acciones */}
                         <td className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5">
+                          <div className="inline-flex items-center gap-1.5 flex-wrap justify-end">
                             {canRegisterCompany && (
-                              <button
-                                onClick={() => {
-                                  setSelectedTutorCompanyId(company.id);
-                                  setTutorError(null);
-                                  setTutorSuccess(null);
-                                  setActiveTab('tutores');
-                                }}
-                                title="Vincular supervisores inmediatos a esta empresa (HU09)"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-all cursor-pointer"
-                              >
-                                <UserPlus className="w-3 h-3" />
-                                <span>Tutores ({company.tutorsCount ?? 0})</span>
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditCompany(company)}
+                                  title="Editar empresa y gestionar Convenio Marco (HU08)"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Editar / Convenio</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedTutorCompanyId(company.id);
+                                    setTutorError(null);
+                                    setTutorSuccess(null);
+                                    setActiveTab('tutores');
+                                  }}
+                                  title="Vincular supervisores inmediatos a esta empresa (HU09)"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-all cursor-pointer"
+                                >
+                                  <UserPlus className="w-3 h-3" />
+                                  <span>Tutores ({company.tutorsCount ?? 0})</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCompany(company.id, company.businessName)}
+                                  title="Dar de baja empresa"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-lg border border-slate-200 hover:border-red-200 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </>
                             )}
                             <button
                               onClick={() => copyToClipboard(company.id)}
@@ -1176,7 +1394,7 @@ export default function EmpresasPage() {
                         <th className="py-3 px-4">Documento</th>
                         <th className="py-3 px-4">Correo Institucional</th>
                         <th className="py-3 px-4">Empresa Vinculada</th>
-                        <th className="py-3 px-4 text-right">Estado</th>
+                        <th className="py-3 px-4 text-right">Estado / Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -1202,9 +1420,31 @@ export default function EmpresasPage() {
                             {tutor.company?.businessName || 'Empresa Vinculada'}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3" /> {tutor.estado}
-                            </span>
+                            <div className="inline-flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3" /> {tutor.estado}
+                              </span>
+                              {canRegisterCompany && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTutor(tutor)}
+                                    title="Editar tutor empresarial"
+                                    className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTutor(tutor.id, tutor.nombre)}
+                                    title="Dar de baja tutor"
+                                    className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1212,6 +1452,308 @@ export default function EmpresasPage() {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Edición de Empresa y Convenio Marco (HU07 / HU08) */}
+        {editingCompany && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-red-800 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="w-5 h-5" />
+                  <h3 className="font-bold text-base">Editar Empresa y Convenio Marco (HU08)</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingCompany(null)}
+                  className="text-red-100 hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditCompany} className="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+                {editCompanyError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
+                    {editCompanyError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">NIT *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.nit}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, nit: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Razón Social *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.businessName}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, businessName: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Representante Legal *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.legalRepresentative}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, legalRepresentative: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Correo de Contacto *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editCompanyData.contactEmail}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, contactEmail: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.contactPhone}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, contactPhone: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Ciudad *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.city}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, city: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Dirección *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editCompanyData.address}
+                      onChange={(e) => setEditCompanyData({ ...editCompanyData, address: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Sección Convenio Marco (HU08) */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-red-700" />
+                      Convenio Marco Institucional (HU08)
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Habilita Convocatorias y Prácticas
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Número de Convenio</label>
+                      <input
+                        type="text"
+                        value={editCompanyData.agreementNumber}
+                        onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementNumber: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg font-mono bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Estado del Convenio</label>
+                      <select
+                        value={editCompanyData.agreementStatus}
+                        onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementStatus: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      >
+                        <option value="VIGENTE">VIGENTE</option>
+                        <option value="EN_TRAMITE">EN TRÁMITE</option>
+                        <option value="VENCIDO">VENCIDO</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Fecha Inicio</label>
+                      <input
+                        type="date"
+                        value={editCompanyData.agreementStartDate}
+                        onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementStartDate: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Fecha Vencimiento</label>
+                      <input
+                        type="date"
+                        value={editCompanyData.agreementEndDate}
+                        onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementEndDate: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Minuta / Documento de Convenio (PDF o URL)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="https://... o suba archivo adjunto"
+                        value={editCompanyData.agreementDocumentUrl}
+                        onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementDocumentUrl: e.target.value })}
+                        className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg cursor-pointer shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isUploadingAgreementDoc ? 'Subiendo...' : 'Subir Archivo'}</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.png,.jpg"
+                          onChange={handleUploadAgreementPdf}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingCompany(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCompany}
+                    className="px-5 py-2 text-xs font-bold text-white bg-red-700 hover:bg-red-800 rounded-xl shadow-sm disabled:opacity-50"
+                  >
+                    {isSavingCompany ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Edición de Tutor Empresarial (HU09) */}
+        {editingTutor && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+              <div className="bg-gradient-to-r from-red-800 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-4 h-4" />
+                  <h3 className="font-bold text-sm">Editar Supervisor Empresarial</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingTutor(null)}
+                  className="text-red-100 hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <form onSubmit={handleSaveEditTutor} className="p-5 space-y-3.5">
+                {editTutorError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
+                    {editTutorError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTutorData.nombre}
+                    onChange={(e) => setEditTutorData({ ...editTutorData, nombre: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Cargo Empresarial *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTutorData.cargo}
+                    onChange={(e) => setEditTutorData({ ...editTutorData, cargo: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Correo Institucional *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editTutorData.correo}
+                    onChange={(e) => setEditTutorData({ ...editTutorData, correo: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Documento</label>
+                    <input
+                      type="text"
+                      value={editTutorData.numeroDocumento}
+                      onChange={(e) => setEditTutorData({ ...editTutorData, numeroDocumento: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
+                    <input
+                      type="text"
+                      value={editTutorData.telefono}
+                      onChange={(e) => setEditTutorData({ ...editTutorData, telefono: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTutor(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingTutor}
+                    className="px-4 py-2 text-xs font-bold text-white bg-red-700 hover:bg-red-800 rounded-xl"
+                  >
+                    {isSavingTutor ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

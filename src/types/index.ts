@@ -755,6 +755,7 @@ export const DOMAIN_INFORME_STATUSES: InformeEstadoDomain[] = [
 export const ACTIVE_PRACTICE_STATUSES = [
   'ASIGNADO_FORMALMENTE',
   'PRACTICA_EN_EJECUCION',
+  'ACEPTADO_ARL_PENDIENTE',
   'Formalizada',
   'En Curso',
 ] as const;
@@ -765,7 +766,6 @@ export const INACTIVE_PRACTICE_STATUSES = [
   'POSTULADO',
   'PRESENTADO_A_EMPRESA',
   'REUBICACION_PENDIENTE',
-  'ACEPTADO_ARL_PENDIENTE',
   'PLAN_EN_REVISION',
   'EVALUACION_PENDIENTE',
   'FINALIZADA',
@@ -1012,4 +1012,112 @@ export interface AcademicPeriodFilterDTO {
   onlyVigente?: boolean;
   page?: number;
   limit?: number;
+}
+
+
+// ==============================================================================
+// DTOs de Liquidación y Cierre Académico de Prácticas
+// Módulo: Liquidación y Cierre de Práctica Formativa
+// ==============================================================================
+
+export type LiquidationApprovalStatus = 'APROBADO' | 'REPROBADO';
+
+export interface EvaluationBreakdownItem {
+  type: string;
+  label: string;
+  weightPercentage: number;
+  score: number | null;
+  weightedScore: number | null;
+  evaluatorName: string | null;
+  evaluatorRole: string | null;
+  isCompleted: boolean;
+  qualitativeComments?: string | null;
+  date?: Date | string | null;
+}
+
+export interface HoursBreakdownItem {
+  weightPercentage: number;
+  requiredHours: number;
+  completedHours: number;
+  isCompleted: boolean;
+  score: number;
+  weightedScore: number;
+}
+
+export interface LiquidationPrerequisiteItem {
+  code: string;
+  title: string;
+  description: string;
+  isMet: boolean;
+  details?: string;
+}
+
+export interface LiquidationSummaryDTO {
+  practiceId: string;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    studentCode: string | null;
+    program: string;
+    documentNumber: string | null;
+  };
+  company: {
+    id: string;
+    businessName: string;
+    nit: string;
+  };
+  teacher: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  tutor: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  vacancyTitle: string | null;
+  periodName: string | null;
+  currentStatus: string;
+  isAlreadyLiquidated: boolean;
+  liquidationDate?: Date | string | null;
+  actaNumber?: string | null;
+  evaluationsBreakdown: EvaluationBreakdownItem[];
+  hoursBreakdown: HoursBreakdownItem;
+  cumulativeFinalScore: number;
+  approvalStatus: LiquidationApprovalStatus;
+  prerequisites: LiquidationPrerequisiteItem[];
+  isLiquidable: boolean;
+  missingRequirements: string[];
+}
+
+export interface LiquidarPracticaDTO {
+  observations?: string;
+  academicResolutionNumber?: string;
+  forceGrade?: number;
+}
+
+export interface LiquidationResultDTO {
+  practiceId: string;
+  studentId: string;
+  studentName: string;
+  finalScore: number;
+  approvalStatus: LiquidationApprovalStatus;
+  actaNumber: string;
+  liquidationDate: Date | string;
+  liquidatedBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  };
+  message: string;
+  actaDownloadUrl: string;
+  curriculumTransferred: boolean;
+  notificationsSent: {
+    student: boolean;
+    tutor: boolean;
+    teacher: boolean;
+  };
 }
