@@ -1121,3 +1121,168 @@ export interface LiquidationResultDTO {
     teacher: boolean;
   };
 }
+
+// ==============================================================================
+// DTOs de Monitoreo y Alertas Automáticas de ARL Estudiante
+// Reglas de Negocio: RN01 (Chequeo Diario), RN02 (Pendiente de Revisión), RN03 (Inactividad Labores Presenciales)
+// ==============================================================================
+
+export type ArlStatus =
+  | 'VIGENTE'
+  | 'PROXIMO_A_VENCER'
+  | 'VENCIDO'
+  | 'SIN_AFILIACION'
+  | 'PENDIENTE_REVISION';
+
+export type ArlSemaphoreLabel =
+  | 'Vigente'
+  | 'Próximo a vencer'
+  | 'Vencido'
+  | 'Sin Afiliación'
+  | 'Pendiente de revisión';
+
+export type ArlAlertSeverity = 'CRITICA' | 'ALTA' | 'PREVENTIVA' | 'INFORMATIVA' | 'NINGUNA';
+
+export type ArlAlertType =
+  | 'FALTA_AFILIACION_PRE_INICIO'
+  | 'PROXIMO_VENCIMIENTO_15_DIAS'
+  | 'PROXIMO_VENCIMIENTO_5_DIAS'
+  | 'ARL_VENCIDA'
+  | 'PENDIENTE_VALIDACION'
+  | 'SIN_ALERTA';
+
+export interface ArlNotificationPayload {
+  recipientEmail: string;
+  recipientRole: 'ESTUDIANTE' | 'DIRECTOR_PROGRAMA';
+  subject: string;
+  templateType: 'PREVENTIVE_RENEWAL' | 'CRITICAL_EXPIRATION_OR_MISSING';
+  htmlBody: string;
+  textBody: string;
+  sentAt: string;
+}
+
+export interface ArlStudentAlertItemDTO {
+  practiceId: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  studentCode: string | null;
+  documentNumber: string | null;
+  program: string;
+  companyId: string;
+  companyName: string;
+  companyNit: string | null;
+  practiceStatus: string;
+  startDate: string | null;
+  arlStatus: ArlStatus;
+  arlSemaphoreLabel: ArlSemaphoreLabel;
+  arlSupportUrl: string | null;
+  arlExpirationDate: string | null;
+  arlValidatedAt: string | null;
+  arlValidatedById: string | null;
+  arlPolicyNumber: string | null;
+  arlEntityName: string | null;
+  arlRejectionReason: string | null;
+  daysUntilExpiration: number | null;
+  businessDaysUntilStart: number | null;
+  hasActiveAlert: boolean;
+  alertType: ArlAlertType;
+  alertSeverity: ArlAlertSeverity;
+  alertTitle: string;
+  alertMessage: string;
+  studentBannerMessage: string | null;
+  coordinatorAlertMessage: string | null;
+  isBlockedFromReports: boolean;
+  enabledForInPersonWork: boolean;
+  notificationsTriggered: ArlNotificationPayload[];
+}
+
+export interface ArlAlertsFilterDTO {
+  status?: ArlStatus | ArlSemaphoreLabel | string;
+  onlyActiveAlerts?: boolean;
+  studentId?: string;
+  search?: string;
+}
+
+export interface ArlAlertsQueryResultDTO {
+  items: ArlStudentAlertItemDTO[];
+  total: number;
+  summary: {
+    totalEvaluated: number;
+    vigente: number;
+    proximoAVencer: number;
+    vencido: number;
+    sinAfiliacion: number;
+    pendienteRevision: number;
+    activeAlertsCount: number;
+    blockedStudentsCount: number;
+    enabledForInPersonCount: number;
+  };
+  evaluatedAt: string;
+  cronSchedule: string;
+}
+
+export interface UploadArlDocumentDTO {
+  practiceId?: string;
+  arlSupportUrl?: string;
+  documentUrl?: string;
+  expirationDate: string | Date;
+  policyNumber?: string;
+  arlEntityName?: string;
+  observations?: string;
+}
+
+export interface UploadArlDocumentResultDTO {
+  studentId: string;
+  practiceId: string;
+  arlStatus: ArlStatus;
+  arlSemaphoreLabel: ArlSemaphoreLabel;
+  arlSupportUrl: string;
+  arlExpirationDate: string;
+  arlPolicyNumber: string | null;
+  arlEntityName: string | null;
+  enabledForInPersonWork: boolean;
+  isBlockedFromReports: boolean;
+  message: string;
+  updatedAt: string;
+}
+
+export interface ValidateArlDocumentDTO {
+  practiceId?: string;
+  approved: boolean;
+  expirationDate?: string | Date;
+  rejectionReason?: string;
+  observations?: string;
+}
+
+export interface ValidateArlDocumentResultDTO {
+  studentId: string;
+  practiceId: string;
+  approved: boolean;
+  arlStatus: ArlStatus;
+  arlSemaphoreLabel: ArlSemaphoreLabel;
+  arlSupportUrl: string | null;
+  arlExpirationDate: string | null;
+  arlValidatedAt: string | null;
+  arlValidatedById: string | null;
+  arlRejectionReason: string | null;
+  enabledForInPersonWork: boolean;
+  isBlockedFromReports: boolean;
+  message: string;
+}
+
+export interface ArlDailyCheckSummaryDTO {
+  jobName: string;
+  cronExpression: string;
+  executedAt: string;
+  totalPracticesEvaluated: number;
+  alertsGenerated: number;
+  expiredBlockedCount: number;
+  preventivePreStartCount: number;
+  upcomingExpirationCount: number;
+  pendingReviewCount: number;
+  emailsSentCount: number;
+  notifications: ArlNotificationPayload[];
+  items: ArlStudentAlertItemDTO[];
+}
+

@@ -16,9 +16,10 @@ import { ApiResponse } from '@/types';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    const params = await Promise.resolve(context.params);
     const actor = getAuthenticatedUser(req);
     if (!actor) {
       return NextResponse.json(
@@ -59,9 +60,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    const params = await Promise.resolve(context.params);
     const actor = getAuthenticatedUser(req);
     if (!actor) {
       return NextResponse.json(
@@ -285,7 +287,7 @@ export async function POST(
 
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiResponse>> {
   return POST(req, context);
 }
