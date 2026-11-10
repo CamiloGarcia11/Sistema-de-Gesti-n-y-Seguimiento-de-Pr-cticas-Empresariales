@@ -1,0 +1,14 @@
+ID_Usuario,Rol,Alias_Usuario,Q1,Q2,Q3,Q4,Q5,Q6,Q7,Q8,Q9,Q10,Puntaje_Ajustado_Suma,Puntaje_SUS_Brooke,Calificacion_Adjetival,Grado
+usr_sus_est_01,ESTUDIANTE,"Estudiante 1 (Ing. Sistemas - 9no sem)",4,2,4,1,4,2,5,1,4,2,33,82.5,Excelente,A
+usr_sus_est_02,ESTUDIANTE,"Estudiante 2 (Ing. Sistemas - 10mo sem)",5,1,5,1,5,1,4,2,5,1,38,95,Excelente,A+
+usr_sus_est_03,ESTUDIANTE,"Estudiante 3 (Ing. Sistemas - 9no sem)",4,2,4,2,4,2,4,2,4,2,30,75,Bueno,B
+usr_sus_est_04,ESTUDIANTE,"Estudiante 4 (Ing. Sistemas - 10mo sem)",4,1,4,1,4,1,5,1,4,1,36,90,Excelente,A+
+usr_sus_est_05,ESTUDIANTE,"Estudiante 5 (Ing. Sistemas - 9no sem)",5,2,4,1,5,2,4,1,4,2,34,85,Excelente,A+
+usr_sus_est_06,ESTUDIANTE,"Estudiante 6 (Ing. Sistemas - 10mo sem)",4,2,5,2,4,1,4,2,4,1,33,82.5,Excelente,A
+usr_sus_eval_01,EVALUADOR,"Tutor Empresarial 1 (TechCorp)",4,2,4,1,4,1,4,2,4,2,32,80,Excelente,A
+usr_sus_eval_02,EVALUADOR,"Docente Supervisor 2 (UFPS)",5,1,4,1,5,1,4,1,5,1,38,95,Excelente,A+
+usr_sus_eval_03,EVALUADOR,"Tutor Empresarial 3 (Software Group)",4,2,4,2,4,2,4,1,4,2,31,77.5,Bueno,B
+usr_sus_eval_04,EVALUADOR,"Docente Supervisor 4 (UFPS)",4,1,5,1,4,1,5,1,4,1,37,92.5,Excelente,A+
+usr_sus_coord_01,COORDINADOR,"Coordinador de Prácticas 1 (Ing. Sistemas)",5,1,5,1,5,1,5,1,5,1,40,100,Excelente,A+
+usr_sus_coord_02,COORDINADOR,"Director de Departamento 2 (UFPS)",4,2,4,1,5,1,4,2,5,2,34,85,Excelente,A+
+usr_sus_coord_03,COORDINADOR,"Asistente de Coordinación 3 (UFPS)",5,1,4,2,4,1,5,1,4,1,36,90,Excelente,A+

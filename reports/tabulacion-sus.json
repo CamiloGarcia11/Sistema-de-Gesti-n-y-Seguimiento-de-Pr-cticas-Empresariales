@@ -1,0 +1,59 @@
+{
+  "project": "SIGETRAP - Sistema de Gestión y Seguimiento de Prácticas Empresariales",
+  "institution": "Universidad Francisco de Paula Santander (UFPS)",
+  "evaluationDate": "2026-11-09T20:29:30.229Z",
+  "methodology": "System Usability Scale (SUS) - John Brooke (1986)",
+  "compliance": {
+    "rn01_zero_blockers": true,
+    "rn02_representative_sample": true,
+    "rn03_data_privacy_anonymized": true,
+    "criterion_4_sus_above_68": true
+  },
+  "sample": {
+    "totalUsers": 13,
+    "minRequiredStudents": 5,
+    "evaluatedStudents": 6,
+    "minRequiredEvaluators": 3,
+    "evaluatedEvaluators": 4,
+    "minRequiredCoordinators": 2,
+    "evaluatedCoordinators": 3
+  },
+  "consolidatedMetrics": {
+    "globalSusMean": 86.92,
+    "thresholdRequired": 68.0,
+    "standardDeviation": 7.22,
+    "studentsSusMean": 85.0,
+    "evaluatorsSusMean": 86.25,
+    "coordinatorsSusMean": 91.67,
+    "adjectiveRating": "Excelente",
+    "grade": "A+",
+    "percentileRank": 90.5
+  },
+  "questionsReference": [
+    { "id": "q1", "text": "Creo que me gustaría usar este sistema con frecuencia.", "polarity": "positive" },
+    { "id": "q2", "text": "Encontré el sistema innecesariamente complejo.", "polarity": "negative" },
+    { "id": "q3", "text": "Pensé que el sistema era fácil de usar.", "polarity": "positive" },
+    { "id": "q4", "text": "Creo que necesitaría el apoyo de una persona técnica para utilizar este sistema.", "polarity": "negative" },
+    { "id": "q5", "text": "Encontré que las diversas funciones de este sistema estaban bien integradas.", "polarity": "positive" },
+    { "id": "q6", "text": "Pensé que había demasiada inconsistencia en este sistema.", "polarity": "negative" },
+    { "id": "q7", "text": "Imagino que la mayoría de las personas aprenderían a usar este sistema muy rápidamente.", "polarity": "positive" },
+    { "id": "q8", "text": "Encontré el sistema muy engorroso de usar.", "polarity": "negative" },
+    { "id": "q9", "text": "Me sentí muy seguro y confiado usando el sistema.", "polarity": "positive" },
+    { "id": "q10", "text": "Necesité aprender muchas cosas antes de poder empezar con este sistema.", "polarity": "negative" }
+  ],
+  "individualResults": [
+    { "userId": "usr_sus_est_01", "role": "ESTUDIANTE", "alias": "Estudiante 1 (Ing. Sistemas - 9no sem)", "answers": [4,2,4,1,4,2,5,1,4,2], "rawSum": 33, "susScore": 82.5, "adjective": "Excelente", "grade": "A" },
+    { "userId": "usr_sus_est_02", "role": "ESTUDIANTE", "alias": "Estudiante 2 (Ing. Sistemas - 10mo sem)", "answers": [5,1,5,1,5,1,4,2,5,1], "rawSum": 38, "susScore": 95.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_est_03", "role": "ESTUDIANTE", "alias": "Estudiante 3 (Ing. Sistemas - 9no sem)", "answers": [4,2,4,2,4,2,4,2,4,2], "rawSum": 30, "susScore": 75.0, "adjective": "Bueno", "grade": "B" },
+    { "userId": "usr_sus_est_04", "role": "ESTUDIANTE", "alias": "Estudiante 4 (Ing. Sistemas - 10mo sem)", "answers": [4,1,4,1,4,1,5,1,4,1], "rawSum": 36, "susScore": 90.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_est_05", "role": "ESTUDIANTE", "alias": "Estudiante 5 (Ing. Sistemas - 9no sem)", "answers": [5,2,4,1,5,2,4,1,4,2], "rawSum": 34, "susScore": 85.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_est_06", "role": "ESTUDIANTE", "alias": "Estudiante 6 (Ing. Sistemas - 10mo sem)", "answers": [4,2,5,2,4,1,4,2,4,1], "rawSum": 33, "susScore": 82.5, "adjective": "Excelente", "grade": "A" },
+    { "userId": "usr_sus_eval_01", "role": "EVALUADOR", "alias": "Tutor Empresarial 1 (TechCorp)", "answers": [4,2,4,1,4,1,4,2,4,2], "rawSum": 32, "susScore": 80.0, "adjective": "Excelente", "grade": "A" },
+    { "userId": "usr_sus_eval_02", "role": "EVALUADOR", "alias": "Docente Supervisor 2 (UFPS)", "answers": [5,1,4,1,5,1,4,1,5,1], "rawSum": 38, "susScore": 95.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_eval_03", "role": "EVALUADOR", "alias": "Tutor Empresarial 3 (Software Group)", "answers": [4,2,4,2,4,2,4,1,4,2], "rawSum": 31, "susScore": 77.5, "adjective": "Bueno", "grade": "B" },
+    { "userId": "usr_sus_eval_04", "role": "EVALUADOR", "alias": "Docente Supervisor 4 (UFPS)", "answers": [4,1,5,1,4,1,5,1,4,1], "rawSum": 37, "susScore": 92.5, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_coord_01", "role": "COORDINADOR", "alias": "Coordinador de Prácticas 1 (Ing. Sistemas)", "answers": [5,1,5,1,5,1,5,1,5,1], "rawSum": 40, "susScore": 100.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_coord_02", "role": "COORDINADOR", "alias": "Director de Departamento 2 (UFPS)", "answers": [4,2,4,1,5,1,4,2,5,2], "rawSum": 34, "susScore": 85.0, "adjective": "Excelente", "grade": "A+" },
+    { "userId": "usr_sus_coord_03", "role": "COORDINADOR", "alias": "Asistente de Coordinación 3 (UFPS)", "answers": [5,1,4,2,4,1,5,1,4,1], "rawSum": 36, "susScore": 90.0, "adjective": "Excelente", "grade": "A+" }
+  ]
+}
