@@ -28,11 +28,13 @@ export function middleware(request: NextRequest) {
   const isInformesRoute = pathname.startsWith('/estudiantes/informes');
   const isStudentsRoute = pathname.startsWith('/estudiantes');
   const isPeriodosRoute = pathname.startsWith('/periodos');
+  const isPracticasRoute = pathname.startsWith('/practicas');
   const isProtectedAppRoute =
     pathname.startsWith('/vacantes') ||
     pathname.startsWith('/empresas') ||
     pathname.startsWith('/estudiante') ||
     isPeriodosRoute ||
+    isPracticasRoute ||
     isStudentsRoute ||
     isPageAdminRoute;
 
@@ -109,6 +111,29 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Si es ruta de liquidación de práctica (RN01), solo Director o Admin
+  if (pathname.includes('/liquidar')) {
+    const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  } else if (isPracticasRoute) {
+    // Otras vistas de prácticas: docentes, director, tutor, admin o estudiante
+    const isAuthorized =
+      payload.role === 'DIRECTOR_PROGRAMA' ||
+      payload.role === 'ADMIN' ||
+      payload.role === 'DOCENTE_PRACTICA' ||
+      payload.role === 'TUTOR_EMPRESARIAL' ||
+      payload.role === 'ESTUDIANTE';
+
+    if (!isAuthorized) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
   // Si es ruta de informes de avance y bitácoras (CU14)
   if (isInformesRoute) {
     const isAuthorized =
@@ -146,5 +171,6 @@ export const config = {
     '/estudiantes/:path*',
     '/estudiante/:path*',
     '/periodos/:path*',
+    '/practicas/:path*',
   ],
 };
