@@ -14,6 +14,7 @@ import {
   GraduationCap,
   BookOpen,
   CalendarRange,
+  FileText,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -131,6 +132,16 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                 >
                   <CalendarRange className="w-3.5 h-3.5" />
                   <span>Periodos Lectivos</span>
+                </Link>
+              )}
+
+              {(currentUser.role === 'DIRECTOR_PROGRAMA' || currentUser.role === 'ADMIN') && (
+                <Link
+                  href="/dashboard"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Dashboard y Reportes</span>
                 </Link>
               )}
 
