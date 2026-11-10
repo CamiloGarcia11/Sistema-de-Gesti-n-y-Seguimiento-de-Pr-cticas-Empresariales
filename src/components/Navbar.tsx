@@ -14,6 +14,7 @@ import {
   GraduationCap,
   BookOpen,
   CalendarRange,
+  ClipboardCheck,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -153,6 +154,14 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                   <span>Mi dictamen</span>
                 </Link>
               )}
+
+              <Link
+                href="/evaluaciones"
+                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                <span>{currentUser.role === 'ESTUDIANTE' ? 'Mis evaluaciones' : 'Evaluaciones'}</span>
+              </Link>
 
               {currentUser.role === 'ADMIN' && (
                 <Link

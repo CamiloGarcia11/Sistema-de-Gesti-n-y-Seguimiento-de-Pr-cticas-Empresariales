@@ -105,6 +105,12 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE "EvaluationStatus" AS ENUM ('DRAFT', 'CERTIFIED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 -- ------------------------------------------------------------------------------
 -- 3. FUNCIÓN TRIGGER PARA ACTUALIZACIÓN AUTOMÁTICA DE UPDATED_AT
 -- ------------------------------------------------------------------------------
@@ -652,13 +658,34 @@ CREATE TABLE IF NOT EXISTS "evaluations" (
     "practice_id" UUID NOT NULL REFERENCES "practices"("id") ON DELETE CASCADE,
     "evaluator_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
     "type" "EvaluationType" NOT NULL,
+    "status" "EvaluationStatus" NOT NULL DEFAULT 'DRAFT',
     "criteria_scores" JSONB NOT NULL,
     "quantitative_score" DOUBLE PRECISION NOT NULL,
     "qualitative_comments" TEXT,
     "document_url" TEXT,
+    "completed_at" TIMESTAMPTZ,
+    "ip_address" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE "evaluations"
+    ADD COLUMN IF NOT EXISTS "status" "EvaluationStatus" NOT NULL DEFAULT 'DRAFT',
+    ADD COLUMN IF NOT EXISTS "completed_at" TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS "ip_address" TEXT;
+
+CREATE TABLE IF NOT EXISTS "evaluation_audit_logs" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "evaluation_id" UUID NOT NULL REFERENCES "evaluations"("id") ON DELETE CASCADE,
+    "actor_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "action" TEXT NOT NULL,
+    "justification" TEXT,
+    "ip_address" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS "idx_evaluation_audit_logs_evaluation_id" ON "evaluation_audit_logs"("evaluation_id");
+CREATE INDEX IF NOT EXISTS "idx_evaluation_audit_logs_actor_id" ON "evaluation_audit_logs"("actor_id");
 
 -- ------------------------------------------------------------------------------
 -- 5. CREACIÓN DE TRIGGERS PARA ACTUALIZACIÓN AUTOMÁTICA DE TIMESTAMPS
