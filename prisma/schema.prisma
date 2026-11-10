@@ -97,6 +97,11 @@ enum EvaluationType {
   FINAL_DOCENTE
 }
 
+enum EvaluationStatus {
+  DRAFT
+  CERTIFIED
+}
+
 // ------------------------------------------------------------------------------
 // MODELS
 // ------------------------------------------------------------------------------
@@ -144,6 +149,7 @@ model User {
   followUpLogsSubmitted   FollowUpLog[]          @relation("StudentFollowUpLogs")
   attachmentsUploaded     Attachment[]           @relation("UserAttachments")
   evaluationsGiven        Evaluation[]            @relation("EvaluatorUser")
+  evaluationAuditEvents  EvaluationAudit[]       @relation("EvaluationAuditActor")
   tutorAssignments        TutorAssignment[]       @relation("AssignedTutor")
   tutorAssignmentsCreated TutorAssignment[]       @relation("TutorAssignmentCreator")
   academicPeriodsCreated  AcademicPeriod[]        @relation("AcademicPeriodCreator")
@@ -429,21 +435,42 @@ model Evaluation {
   practiceId          String         @map("practice_id")
   evaluatorId         String         @map("evaluator_id")
   type                EvaluationType
+  status              EvaluationStatus @default(DRAFT)
   criteriaScores      Json // Ponderación de competencias / criterios evaluados
   quantitativeScore   Float          @map("quantitative_score") // 0.0 - 5.0
   qualitativeComments String?        @map("qualitative_comments")
   documentUrl         String?        @map("document_url")
+  completedAt         DateTime?      @map("completed_at")
+  ipAddress           String?        @map("ip_address")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
-  practice  Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  evaluator User     @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Restrict)
+  practice     Practice          @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  evaluator    User              @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Restrict)
+  auditEvents  EvaluationAudit[]
 
   @@index([practiceId])
   @@index([evaluatorId])
   @@index([type])
   @@map("evaluations")
+}
+
+model EvaluationAudit {
+  id            String     @id @default(uuid())
+  evaluationId  String     @map("evaluation_id")
+  actorId       String     @map("actor_id")
+  action        String
+  justification String?
+  ipAddress     String?    @map("ip_address")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  actor      User       @relation("EvaluationAuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([evaluationId])
+  @@index([actorId])
+  @@map("evaluation_audit_logs")
 }
 
 model StudyPlan {

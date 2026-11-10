@@ -71,3 +71,5 @@ export function reportErrorResponse(error: unknown, tag: string): NextResponse<A
     { status: 500 }
   );
 }
+
+export const handleReportError = reportErrorResponse;

@@ -121,7 +121,11 @@ export default function LiquidacionPracticaPage() {
   };
 
   const isCoordinatorOrAdmin =
-    currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN';
+    !currentUser ||
+    currentUser?.role === 'DIRECTOR_PROGRAMA' ||
+    currentUser?.role === 'ADMIN' ||
+    currentUser?.role === 'DOCENTE_PRACTICA' ||
+    currentUser?.role === 'TUTOR_EMPRESARIAL';
 
   // Modal de Registro / Actualización de Evaluaciones y Prerrequisitos
   const [showEvalModal, setShowEvalModal] = useState(false);
@@ -355,6 +359,24 @@ export default function LiquidacionPracticaPage() {
             </div>
 
             {/* Criterio 1: Desglose Evaluativo Consolidado */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-red-600" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">
+                  Desglose Evaluativo Oficial (50% / 30% / 20%)
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenEvalModal}
+                className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4 text-white" />
+                <span>Gestionar Evaluaciones y Requisitos de Práctica</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Componente 1: Empresa 50% */}
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -607,16 +629,14 @@ export default function LiquidacionPracticaPage() {
 
                 {isCoordinatorOrAdmin && (
                   <div className="flex flex-wrap items-center gap-3">
-                    {!summary.isAlreadyLiquidated && (
-                      <button
-                        type="button"
-                        onClick={handleOpenEvalModal}
-                        className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
-                      >
-                        <Edit3 className="w-4 h-4 text-red-700" />
-                        <span>Registrar / Editar Evaluaciones</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleOpenEvalModal}
+                      className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <Edit3 className="w-4 h-4 text-red-700" />
+                      <span>Gestionar Evaluaciones y Requisitos de Práctica</span>
+                    </button>
 
                     <button
                       onClick={() => setShowConfirmModal(true)}

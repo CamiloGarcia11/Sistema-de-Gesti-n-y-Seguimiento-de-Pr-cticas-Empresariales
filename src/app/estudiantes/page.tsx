@@ -30,6 +30,7 @@ import {
   Upload,
   BellRing,
   Calendar,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   UserResponseDTO,
@@ -1084,6 +1085,14 @@ export default function EstudiantesPage() {
                                     <span>Formalizar Práctica Empresarial (HU13)</span>
                                   </button>
                                 )}
+
+                                <Link
+                                  href={`/evaluaciones/${studentPracticeId}`}
+                                  className="w-full mt-1.5 flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                                >
+                                  <ClipboardCheck className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>Gestionar Evaluaciones y Rúbrica (HU15)</span>
+                                </Link>
 
                                 <Link
                                   href={`/practicas/${studentPracticeId}/liquidar`}
