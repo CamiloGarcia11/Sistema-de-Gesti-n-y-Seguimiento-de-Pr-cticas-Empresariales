@@ -79,8 +79,7 @@ export class PracticeLiquidationService {
 
     const isAlreadyLiquidated =
       practice.currentStatus === 'FINALIZADA' ||
-      practice.currentStatus === 'CERRADA' ||
-      practice.finalScore !== null;
+      practice.currentStatus === 'CERRADA';
 
     // 1. Extraer evaluaciones
     const evaluations = practice.evaluations || [];
