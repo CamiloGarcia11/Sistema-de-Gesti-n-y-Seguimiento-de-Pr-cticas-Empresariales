@@ -521,6 +521,7 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
       createdAt: 'created_at',
     },
     dateFields: ['createdAt'],
+    numberFields: [],
     defaults: {
       id: () => crypto.randomUUID(),
       createdAt: () => new Date().toISOString(),

@@ -32,6 +32,14 @@ export const COMPETENCY_RUBRIC = [
   },
 ] as const;
 
+export interface RubricCriterionItem {
+  id: string;
+  name: string;
+  weight: number;
+}
+
+export const ALL_RUBRIC_CRITERIA: RubricCriterionItem[] = COMPETENCY_RUBRIC.flatMap((category) => [...category.criteria]);
+
 export const ACHIEVEMENT_LEVELS = [
   { label: 'Insuficiente', score: 0 },
   { label: 'Básico', score: 2 },
@@ -120,7 +128,7 @@ function parsePayload(body: unknown): EvaluationPayload {
     throw new CompetencyEvaluationError('Debe enviar la lista de criterios evaluados', 400, 'INVALID_CRITERIA');
   }
 
-  const allCriteria = COMPETENCY_RUBRIC.flatMap((category) => category.criteria);
+  const allCriteria = ALL_RUBRIC_CRITERIA;
   const seen = new Set<string>();
   const criteriaScores: CriterionScore[] = data.criteriaScores.map((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
@@ -133,7 +141,7 @@ function parsePayload(body: unknown): EvaluationPayload {
     const comment = criterion.comment ?? '';
     if (
       typeof criterionId !== 'string' ||
-      !allCriteria.some((candidate) => candidate.id === criterionId) ||
+      !allCriteria.some((candidate: RubricCriterionItem) => candidate.id === criterionId) ||
       seen.has(criterionId)
     ) {
       throw new CompetencyEvaluationError('Hay criterios desconocidos o repetidos', 400, 'INVALID_CRITERION');
@@ -160,10 +168,8 @@ function parsePayload(body: unknown): EvaluationPayload {
 }
 
 function calculateScore(criteriaScores: CriterionScore[]): number {
-  const weights = new Map(
-    COMPETENCY_RUBRIC.flatMap((category) =>
-      category.criteria.map((criterion) => [criterion.id, criterion.weight] as const)
-    )
+  const weights = new Map<string, number>(
+    ALL_RUBRIC_CRITERIA.map((criterion) => [criterion.id, criterion.weight])
   );
   const selectedWeight = criteriaScores.reduce(
     (total, criterion) => total + (weights.get(criterion.criterionId) ?? 0),
@@ -197,8 +203,9 @@ function calculateConsolidatedScore(
 }
 
 function validateCompleteRubric(criteriaScores: CriterionScore[]): void {
-  const missing = COMPETENCY_RUBRIC.flatMap((category) => category.criteria)
-    .filter((criterion) => !criteriaScores.some((score) => score.criterionId === criterion.id));
+  const missing = ALL_RUBRIC_CRITERIA.filter(
+    (criterion: RubricCriterionItem) => !criteriaScores.some((score) => score.criterionId === criterion.id)
+  );
   if (missing.length) {
     throw new CompetencyEvaluationError(
       'Debe completar todos los criterios antes de certificar la evaluación',

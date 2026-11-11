@@ -49,7 +49,7 @@ export function authorizeReportAccess(req: NextRequest): GuardResult {
   return { actor };
 }
 
-export function reportErrorResponse(error: unknown, tag: string): NextResponse<ApiResponse> {
+export function reportErrorResponse(error: unknown, tag: string = 'REPORT_ERROR'): NextResponse<ApiResponse> {
   if (error instanceof ReportValidationError) {
     return NextResponse.json(
       {

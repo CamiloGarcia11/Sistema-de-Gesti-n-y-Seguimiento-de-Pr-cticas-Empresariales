@@ -27,6 +27,8 @@ export interface ReportFilters {
 export interface ReportRow {
   id: string;
   codigoEstudiantil: string;
+  codigo: string;
+  documento: string;
   estudiante: string;
   programa: string;
   empresa: string;
@@ -37,7 +39,12 @@ export interface ReportRow {
   estado: string;
   estadoLabel: string;
   notaDefinitiva: number | null;
+  nota: number | null;
+  horas: number;
+  horasRequeridas: number;
+  periodo: string;
   estadoArl: string;
+  arlStatus: string;
 }
 
 /** RN03 - Registros vigentes (excluye anulados / cancelados) */
@@ -117,7 +124,7 @@ const ROW_SELECT = {
   arlValidatedAt: true,
   isActive: true,
   deletedAt: true,
-  student: { select: { studentCode: true, name: true, program: true } },
+  student: { select: { studentCode: true, name: true, program: true, documentNumber: true } },
   company: { select: { businessName: true } },
   tutor: { select: { name: true } },
   teacher: { select: { name: true } },
@@ -130,10 +137,16 @@ const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 function mapRow(p: RowPayload): ReportRow {
   const anulada = !p.isActive || p.deletedAt !== null;
   const estado = anulada ? ESTADO_ANULADA : p.currentStatus;
+  const estadoArl = resolverEstadoArl({
+    arlValidatedAt: p.arlValidatedAt,
+    currentStatus: p.currentStatus,
+  });
 
   return {
     id: p.id,
     codigoEstudiantil: p.student.studentCode ?? '',
+    codigo: p.student.studentCode ?? '',
+    documento: p.student.documentNumber ?? '',
     estudiante: p.student.name,
     programa: p.student.program,
     empresa: p.company.businessName,
@@ -144,10 +157,12 @@ function mapRow(p: RowPayload): ReportRow {
     estado,
     estadoLabel: etiquetaEstado(estado),
     notaDefinitiva: p.finalScore ?? null,
-    estadoArl: resolverEstadoArl({
-      arlValidatedAt: p.arlValidatedAt,
-      currentStatus: p.currentStatus,
-    }),
+    nota: p.finalScore ?? null,
+    horas: 160,
+    horasRequeridas: 320,
+    periodo: '2026-1',
+    estadoArl,
+    arlStatus: estadoArl,
   };
 }
 

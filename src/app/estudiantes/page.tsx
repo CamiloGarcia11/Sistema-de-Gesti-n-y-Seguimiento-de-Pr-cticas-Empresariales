@@ -1039,7 +1039,7 @@ export default function EstudiantesPage() {
                       {(() => {
                         const studentPracticeId =
                           student.activePractice?.id ||
-                          arlAlertsByStudent[student.id]?.id ||
+                          arlAlertsByStudent[student.id]?.practiceId ||
                           (student.email === 'estudiante@ufps.edu.co' ? '574821c9-8787-4f6d-865d-81f45f8f91e6' : undefined);
                         const studentCompanyName =
                           student.activePractice?.companyName ||
