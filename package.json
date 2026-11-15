@@ -32,6 +32,8 @@
     "test:liquidar": "npx tsx tests/hu-liquidacion-practica.test.ts",
     "test:cu15": "npx tsx tests/hu-liquidacion-practica.test.ts",
     "test:arl": "npx tsx tests/hu-alertas-arl.test.ts",
+    "test:hu20": "npx tsx tests/hu20-traslado-practicante.test.ts",
+    "test:traslado": "npx tsx tests/hu20-traslado-practicante.test.ts",
     "test:qa": "npx tsx tests/qa-master-runner.test.ts",
     "test:qa:e2e": "npx tsx tests/qa-integracion-e2e.test.ts",
     "test:qa:seguridad": "npx tsx tests/qa-seguridad-rbac.test.ts",

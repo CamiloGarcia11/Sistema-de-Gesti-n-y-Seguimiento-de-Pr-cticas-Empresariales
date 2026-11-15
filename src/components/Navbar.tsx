@@ -16,6 +16,7 @@ import {
   CalendarRange,
   FileText,
   ClipboardCheck,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -143,6 +144,16 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                 >
                   <Shield className="w-3.5 h-3.5 text-red-700" />
                   <span>Liquidación (HU15)</span>
+                </Link>
+              )}
+
+              {(currentUser.role === 'DIRECTOR_PROGRAMA' || currentUser.role === 'ADMIN') && (
+                <Link
+                  href="/practicas/574821c9-8787-4f6d-865d-81f45f8f91e6/traslado"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-red-700" />
+                  <span>Traslado (HU20)</span>
                 </Link>
               )}
 

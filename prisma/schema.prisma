@@ -60,6 +60,7 @@ enum PracticeStatus {
   POSTULADO
   PRESENTADO_A_EMPRESA
   REUBICACION_PENDIENTE
+  EN_TRASLADO_EMPRESARIAL
   ACEPTADO_ARL_PENDIENTE
   ASIGNADO_FORMALMENTE
   PLAN_EN_REVISION
@@ -153,6 +154,7 @@ model User {
   tutorAssignments        TutorAssignment[]       @relation("AssignedTutor")
   tutorAssignmentsCreated TutorAssignment[]       @relation("TutorAssignmentCreator")
   academicPeriodsCreated  AcademicPeriod[]        @relation("AcademicPeriodCreator")
+  transfersApproved       PracticeTransfer[]      @relation("TransferApprover")
 
   @@index([email])
   @@index([role])
@@ -175,10 +177,12 @@ model Company {
   deletedAt           DateTime? @map("deleted_at")
 
   // Relaciones
-  agreements Agreement[]
-  tutors     User[]      @relation("CompanyTutors")
-  vacancies  Vacancy[]
-  practices  Practice[]
+  agreements        Agreement[]
+  tutors            User[]             @relation("CompanyTutors")
+  vacancies         Vacancy[]
+  practices         Practice[]
+  transfersAsSource PracticeTransfer[] @relation("TransferSourceCompany")
+  transfersAsTarget PracticeTransfer[] @relation("TransferTargetCompany")
 
   @@index([nit])
   @@index([businessName])
@@ -267,8 +271,9 @@ model Practice {
   vacancyId     String?        @map("vacancy_id")
   teacherId     String?        @map("teacher_id")
   tutorId       String?        @map("tutor_id")
-  directorId    String?        @map("director_id")
-  currentStatus PracticeStatus @default(ASPIRANTE) @map("current_status")
+  directorId     String?        @map("director_id")
+  currentStatus  PracticeStatus @default(ASPIRANTE) @map("current_status")
+  transferStatus String?        @map("transfer_status")
 
   // Soporte de ARL y Formalización (RN-06)
   arlSupportUrl    String?   @map("arl_support_url")
@@ -304,13 +309,45 @@ model Practice {
   followUpLogs       FollowUpLog[]
   evaluations        Evaluation[]
   tutoringAssignment TutorAssignment?
+  transfers          PracticeTransfer[]      @relation("PracticeTransfers")
 
   @@index([studentId])
   @@index([companyId])
   @@index([teacherId])
   @@index([tutorId])
   @@index([currentStatus])
+  @@index([transferStatus])
   @@map("practices")
+}
+
+// ------------------------------------------------------------------------------
+// HU20: PROTOCOLO DE TRASLADO Y REUBICACIÓN POR AUSENCIA DE TUTOR EMPRESARIAL
+// Entidad BD: practice_transfers
+// ------------------------------------------------------------------------------
+
+model PracticeTransfer {
+  id               String   @id @default(uuid())
+  practiceId       String   @map("practice_id")
+  sourceCompanyId  String   @map("source_company_id")
+  targetCompanyId  String?  @map("target_company_id")
+  reasonCode       String   @default("AUSENCIA_TUTOR_EMPRESARIAL") @map("reason_code")
+  justification    String?
+  hoursTransferred Int      @default(0) @map("hours_transferred")
+  approvedById     String   @map("approved_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  practice      Practice @relation("PracticeTransfers", fields: [practiceId], references: [id], onDelete: Cascade)
+  sourceCompany Company  @relation("TransferSourceCompany", fields: [sourceCompanyId], references: [id], onDelete: Restrict)
+  targetCompany Company? @relation("TransferTargetCompany", fields: [targetCompanyId], references: [id], onDelete: SetNull)
+  approvedBy    User     @relation("TransferApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@index([practiceId])
+  @@index([sourceCompanyId])
+  @@index([targetCompanyId])
+  @@index([approvedById])
+  @@index([reasonCode])
+  @@map("practice_transfers")
 }
 
 model TutorAssignment {
