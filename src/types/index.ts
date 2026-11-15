@@ -76,6 +76,7 @@ export type PracticeStatus =
   | 'POSTULADO'
   | 'PRESENTADO_A_EMPRESA'
   | 'REUBICACION_PENDIENTE'
+  | 'EN_TRASLADO_EMPRESARIAL'
   | 'ACEPTADO_ARL_PENDIENTE'
   | 'ASIGNADO_FORMALMENTE'
   | 'PLAN_EN_REVISION'
@@ -183,6 +184,7 @@ export interface UserResponseDTO {
   activePractice?: {
     id: string;
     currentStatus: PracticeStatus;
+    transferStatus?: string | null;
     estadoDomain?: PracticaFormativaEstadoDomain;
     academicPeriod?: string | null;
     companyId?: string | null;
@@ -1285,4 +1287,251 @@ export interface ArlDailyCheckSummaryDTO {
   notifications: ArlNotificationPayload[];
   items: ArlStudentAlertItemDTO[];
 }
+
+// ==============================================================================
+// HU20: Protocolo de Traslado y Reubicación de Practicante por Ausencia de Tutor Empresarial
+// Reglas de Negocio: RN01 (Preservación de horas), RN02 (UFPS como último recurso), RN03 (Nueva ARL / Notificación)
+// ==============================================================================
+
+export type PracticeTransferReasonCode = 'AUSENCIA_TUTOR_EMPRESARIAL';
+
+export type PracticeTransferStatus =
+  | 'EN_TRASLADO_EMPRESARIAL'
+  | 'CONGELADA'
+  | 'TRASLADO_COMPLETADO';
+
+export interface PracticeCutoffReportDTO {
+  id: string;
+  code: string;
+  practiceId: string;
+  studentId: string;
+  studentName: string;
+  studentCode: string | null;
+  sourceCompanyId: string;
+  sourceCompanyName: string;
+  sourceCompanyNit: string;
+  reasonCode: PracticeTransferReasonCode;
+  justification: string;
+  hoursAccumulated: number;
+  requiredHours: number;
+  remainingHours: number;
+  previousReportsCount: number;
+  generatedAt: string;
+  generatedBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  };
+  summary: string;
+}
+
+export interface PracticeTransferRecordDTO {
+  id: string;
+  practiceId: string;
+  sourceCompanyId: string;
+  targetCompanyId: string | null;
+  reasonCode: PracticeTransferReasonCode | string;
+  justification: string | null;
+  hoursTransferred: number;
+  approvedById: string;
+  createdAt: Date | string;
+  sourceCompany?: {
+    id: string;
+    businessName: string;
+    nit: string;
+  };
+  targetCompany?: {
+    id: string;
+    businessName: string;
+    nit: string;
+    isUfpsContingency?: boolean;
+  } | null;
+  approvedBy?: {
+    id: string;
+    name: string;
+    email: string;
+    role?: Role;
+  };
+}
+
+export interface RequestPracticeTransferDTO {
+  reasonCode?: PracticeTransferReasonCode | string;
+  causa?: string;
+  motivo?: string;
+  justification?: string;
+  justificacion?: string;
+  observaciones?: string;
+  companyNotifiedInability?: boolean;
+  tutorRenouncedWithoutReplacement?: boolean;
+  cutoffHoursOverride?: number;
+}
+
+export interface RequestPracticeTransferResultDTO {
+  transfer: PracticeTransferRecordDTO;
+  practiceId: string;
+  studentId: string;
+  studentName: string;
+  previousStatus: PracticeStatus;
+  currentStatus: PracticeStatus;
+  transferStatus: PracticeTransferStatus;
+  isFrozen: boolean;
+  reasonCode: PracticeTransferReasonCode;
+  hoursAccumulatedAtCutoff: number;
+  cutoffReport: PracticeCutoffReportDTO;
+  message: string;
+}
+
+export interface CompatibleTransferVacancyItemDTO {
+  id: string;
+  title: string;
+  description: string;
+  requirements: string;
+  program: string;
+  vacanciesCount: number;
+  availableSlots: number;
+  matchedSkills: string[];
+  compatibilityScore: number;
+}
+
+export interface CompatibleTransferCompanyItemDTO {
+  companyId: string;
+  businessName: string;
+  nit: string;
+  city: string;
+  address: string;
+  contactEmail: string;
+  contactPhone: string;
+  hasActiveAgreement: boolean;
+  agreementNumber: string | null;
+  agreementEndDate: string | null;
+  isUfpsContingency: boolean;
+  priorityLevel: 'PRIORIDAD_SECTOR_PRODUCTIVO' | 'ULTIMA_INSTANCIA_UFPS';
+  priorityRank: number;
+  matchedSkills: string[];
+  compatibilityScore: number;
+  availableSlotsTotal: number;
+  vacancies: CompatibleTransferVacancyItemDTO[];
+  availableTutors: Array<{
+    id: string;
+    name: string;
+    email: string;
+    cargo: string;
+  }>;
+  requiresUfpsJustificationWarning: boolean;
+  ufpsWarningMessage: string | null;
+}
+
+export interface CompatibleTransferCompaniesResultDTO {
+  practiceId: string;
+  studentId: string;
+  studentName: string;
+  studentProgram: string;
+  studentSkills: string[];
+  currentStatus: PracticeStatus;
+  transferStatus: string | null;
+  hoursToTransfer: number;
+  sourceCompany: {
+    id: string;
+    businessName: string;
+    nit: string;
+  };
+  items: CompatibleTransferCompanyItemDTO[];
+  total: number;
+  externalOptionsCount: number;
+  hasUfpsFallbackOption: boolean;
+}
+
+export interface ConfirmPracticeTransferDTO {
+  targetCompanyId?: string;
+  empresaDestinoId?: string;
+  companyId?: string;
+  targetTutorId?: string;
+  tutorId?: string;
+  nuevoTutorId?: string;
+  tutorEmpresarialId?: string;
+  targetVacancyId?: string;
+  vacancyId?: string;
+  plazaId?: string;
+  justification?: string;
+  justificacion?: string;
+  ufpsJustification?: string;
+  confirmUfpsLastResort?: boolean;
+  confirmarUltimaInstanciaUfps?: boolean;
+  arlSupportUrl?: string;
+  observations?: string;
+  observaciones?: string;
+}
+
+export interface TransferNotificationItemDTO {
+  recipientType: 'ESTUDIANTE' | 'NUEVA_EMPRESA' | 'DOCENTE_TUTOR';
+  recipientName: string;
+  recipientEmail: string;
+  subject: string;
+  message: string;
+  sentAt: string;
+}
+
+export interface ConfirmPracticeTransferResultDTO {
+  transfer: PracticeTransferRecordDTO;
+  practiceId: string;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    studentCode: string | null;
+  };
+  sourceCompany: {
+    id: string;
+    businessName: string;
+    nit: string;
+  };
+  targetCompany: {
+    id: string;
+    businessName: string;
+    nit: string;
+    isUfpsContingency: boolean;
+  };
+  newTutor: {
+    id: string;
+    name: string;
+    email: string;
+    cargo: string;
+  };
+  teacher: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  previousStatus: PracticeStatus;
+  currentStatus: PracticeStatus;
+  transferStatus: PracticeTransferStatus;
+  hoursPreserved: {
+    hoursTransferredFromOrigin: number;
+    totalHoursCompleted: number;
+    totalHoursRequired: number;
+    remainingHoursToComplete: number;
+    previousReportsPreservedCount: number;
+    previousLogsPreservedCount: number;
+  };
+  arlReevaluation: {
+    previousArlValidatedAt: string | null;
+    newArlStatus: ArlStatus;
+    arlSemaphoreLabel: ArlSemaphoreLabel;
+    requiresNewFacilityCoverageValidation: boolean;
+    isUfpsCampusCoverage: boolean;
+    coverageNote: string;
+  };
+  ufpsContingencyApplied: boolean;
+  ufpsWarningConfirmed: boolean;
+  ufpsJustification: string | null;
+  notificationsSent: {
+    student: boolean;
+    newCompany: boolean;
+    teacher: boolean;
+    items: TransferNotificationItemDTO[];
+  };
+  message: string;
+}
+
 

@@ -31,6 +31,7 @@ import {
   BellRing,
   Calendar,
   ClipboardCheck,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   UserResponseDTO,
@@ -607,6 +608,11 @@ export default function EstudiantesPage() {
           label: 'En Ejecución',
           color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         };
+      case 'EN_TRASLADO_EMPRESARIAL':
+        return {
+          label: 'En Traslado Empresarial (HU20)',
+          color: 'bg-amber-50 text-amber-800 border-amber-300',
+        };
       case 'ASIGNADO_FORMALMENTE':
         return {
           label: 'Asignado Formalmente',
@@ -768,6 +774,7 @@ export default function EstudiantesPage() {
               <option value="ASIGNADO_FORMALMENTE">Asignado Formalmente</option>
               <option value="PLAN_EN_REVISION">Plan en Revisión</option>
               <option value="PRACTICA_EN_EJECUCION">En Ejecución</option>
+              <option value="EN_TRASLADO_EMPRESARIAL">En Traslado Empresarial (HU20)</option>
               <option value="FINALIZADA">Finalizada</option>
             </select>
 
@@ -1084,6 +1091,16 @@ export default function EstudiantesPage() {
                                     <FileCheck2 className="w-3.5 h-3.5" />
                                     <span>Formalizar Práctica Empresarial (HU13)</span>
                                   </button>
+                                )}
+
+                                {(currentUser?.role === 'DIRECTOR_PROGRAMA' || currentUser?.role === 'ADMIN') && (
+                                  <Link
+                                    href={`/practicas/${studentPracticeId}/traslado`}
+                                    className="w-full mt-1.5 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5 text-rose-700" />
+                                    <span>Protocolo de Traslado Empresarial (HU20)</span>
+                                  </Link>
                                 )}
 
                                 <Link

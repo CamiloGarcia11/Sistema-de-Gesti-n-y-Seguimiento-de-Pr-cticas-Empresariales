@@ -286,6 +286,7 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
       tutorId: 'tutor_id',
       directorId: 'director_id',
       currentStatus: 'current_status',
+      transferStatus: 'transfer_status',
       arlSupportUrl: 'arl_support_url',
       arlValidatedAt: 'arl_validated_at',
       arlValidatedById: 'arl_validated_by_id',
@@ -328,6 +329,7 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
       tutorAssignments: { type: 'hasMany', targetModel: 'tutorAssignment', foreignKey: 'practiceId' },
       advanceReports: { type: 'hasMany', targetModel: 'advanceReport', foreignKey: 'practicaId' },
       followUpLogs: { type: 'hasMany', targetModel: 'followUpLog', foreignKey: 'practicaId' },
+      transfers: { type: 'hasMany', targetModel: 'practiceTransfer', foreignKey: 'practiceId' },
     },
   },
   tutorAssignment: {
@@ -666,7 +668,38 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
       createdBy: { type: 'belongsTo', targetModel: 'user', foreignKey: 'creadoPorId' },
     },
   },
+  practiceTransfer: {
+    table: 'practice_transfers',
+    fields: {
+      id: 'id',
+      practiceId: 'practice_id',
+      sourceCompanyId: 'source_company_id',
+      targetCompanyId: 'target_company_id',
+      reasonCode: 'reason_code',
+      justification: 'justification',
+      hoursTransferred: 'hours_transferred',
+      approvedById: 'approved_by_id',
+      createdAt: 'created_at',
+    },
+    dateFields: ['createdAt'],
+    numberFields: ['hoursTransferred'],
+    defaults: {
+      id: () => crypto.randomUUID(),
+      reasonCode: () => 'AUSENCIA_TUTOR_EMPRESARIAL',
+      hoursTransferred: () => 0,
+      createdAt: () => new Date().toISOString(),
+    },
+    relations: {
+      practice: { type: 'belongsTo', targetModel: 'practice', foreignKey: 'practiceId' },
+      sourceCompany: { type: 'belongsTo', targetModel: 'company', foreignKey: 'sourceCompanyId' },
+      targetCompany: { type: 'belongsTo', targetModel: 'company', foreignKey: 'targetCompanyId' },
+      approvedBy: { type: 'belongsTo', targetModel: 'user', foreignKey: 'approvedById' },
+    },
+  },
 };
+
+const fallbackPracticeTransfers: Map<string, Record<string, any>> = new Map();
+const fallbackPracticeState: Map<string, { transferStatus?: string | null; currentStatus?: string }> = new Map();
 
 function getReverseFields(schema: ModelSchema): Record<string, string> {
   const rev: Record<string, string> = {};
@@ -692,6 +725,20 @@ function rowToModel(modelName: string, row: Record<string, any>): Record<string,
       out[camel] = typeof val === 'number' ? val : Number(val);
     } else {
       out[camel] = val;
+    }
+  }
+  if (modelName === 'practice' && out.id) {
+    const fb = fallbackPracticeState.get(out.id);
+    if (fb) {
+      if (fb.transferStatus !== undefined && (out.transferStatus === null || out.transferStatus === undefined)) {
+        out.transferStatus = fb.transferStatus;
+      }
+      if (fb.currentStatus !== undefined) {
+        out.currentStatus = fb.currentStatus;
+      }
+    }
+    if (out.transferStatus === undefined) {
+      out.transferStatus = null;
     }
   }
   return out;
@@ -1064,6 +1111,79 @@ async function supabaseFetch(
     const pgCode = json?.code || String(res.status);
     const msg = json?.message || json?.error || `Supabase error (${res.status})`;
     const details = json?.details || '';
+
+    // Fallback resiliente para HU20 si la tabla practice_transfers o la columna transfer_status aún no se ha migrado en la nube
+    if (table === 'practice_transfers' && (res.status === 404 || pgCode === 'PGRST205' || pgCode === '42P01')) {
+      const method = options.method || 'GET';
+      if (method === 'GET') {
+        return Array.from(fallbackPracticeTransfers.values());
+      } else if (method === 'POST' && options.body) {
+        const row = {
+          id: options.body.id || crypto.randomUUID(),
+          practice_id: options.body.practice_id,
+          source_company_id: options.body.source_company_id,
+          target_company_id: options.body.target_company_id ?? null,
+          reason_code: options.body.reason_code || 'AUSENCIA_TUTOR_EMPRESARIAL',
+          justification: options.body.justification ?? null,
+          hours_transferred: options.body.hours_transferred ?? 0,
+          approved_by_id: options.body.approved_by_id,
+          created_at: options.body.created_at || new Date().toISOString(),
+        };
+        fallbackPracticeTransfers.set(row.id, row);
+        return [row];
+      } else if (method === 'PATCH' && options.body && options.query) {
+        const idMatch = options.query.match(/id=eq\.([^&]+)/);
+        const targetId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+        if (targetId && fallbackPracticeTransfers.has(targetId)) {
+          const updated = { ...fallbackPracticeTransfers.get(targetId)!, ...options.body };
+          fallbackPracticeTransfers.set(targetId, updated);
+          return [updated];
+        }
+        return [];
+      } else if (method === 'DELETE' && options.query) {
+        const idMatch = options.query.match(/id=eq\.([^&]+)/);
+        const targetId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+        if (targetId) fallbackPracticeTransfers.delete(targetId);
+        return [];
+      }
+    }
+
+    if (
+      (table === 'practices' || table === 'practice_status_history') &&
+      options.body &&
+      (pgCode === 'PGRST204' || pgCode === '22P02' || pgCode === '23514' || String(msg).includes('transfer_status') || String(msg).includes('EN_TRASLADO_EMPRESARIAL'))
+    ) {
+      const sanitizedBody = { ...options.body };
+      const idMatch = options.query?.match(/id=eq\.([^&]+)/);
+      const practiceId = sanitizedBody.id || (idMatch ? decodeURIComponent(idMatch[1]) : null);
+
+      if (table === 'practices') {
+        if (practiceId) {
+          const prev = fallbackPracticeState.get(practiceId) || {};
+          fallbackPracticeState.set(practiceId, {
+            transferStatus: sanitizedBody.transfer_status !== undefined ? sanitizedBody.transfer_status : prev.transferStatus,
+            currentStatus: sanitizedBody.current_status !== undefined ? sanitizedBody.current_status : prev.currentStatus,
+          });
+        }
+        delete sanitizedBody.transfer_status;
+        if (sanitizedBody.current_status === 'EN_TRASLADO_EMPRESARIAL') {
+          sanitizedBody.current_status = 'REUBICACION_PENDIENTE';
+        }
+      } else if (table === 'practice_status_history') {
+        if (sanitizedBody.from_status === 'EN_TRASLADO_EMPRESARIAL') {
+          sanitizedBody.from_status = 'REUBICACION_PENDIENTE';
+        }
+        if (sanitizedBody.to_status === 'EN_TRASLADO_EMPRESARIAL') {
+          sanitizedBody.to_status = 'REUBICACION_PENDIENTE';
+        }
+      }
+
+      return supabaseFetch(table, {
+        ...options,
+        body: sanitizedBody,
+      });
+    }
+
     const err: any = new Error(`${msg} ${details}`.trim());
     err.code = pgCode === '23505' ? 'P2002' : pgCode;
     err.pgCode = pgCode;
@@ -1084,6 +1204,7 @@ function createSupabasePrismaClient(): PrismaClient {
       const queryParts: string[] = ['select=*'];
       if (simpleWhere && !simpleWhere.OR && !simpleWhere.AND && !simpleWhere.NOT) {
         for (const [k, v] of Object.entries(simpleWhere)) {
+          if (k === 'transferStatus' || v === 'EN_TRASLADO_EMPRESARIAL') continue;
           const col = schema.fields[k];
           if (!col) continue;
           if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {

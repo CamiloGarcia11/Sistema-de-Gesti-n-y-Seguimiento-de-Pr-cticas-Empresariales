@@ -62,6 +62,7 @@ DO $$ BEGIN
         'POSTULADO',
         'PRESENTADO_A_EMPRESA',
         'REUBICACION_PENDIENTE',
+        'EN_TRASLADO_EMPRESARIAL',
         'ACEPTADO_ARL_PENDIENTE',
         'ASIGNADO_FORMALMENTE',
         'PLAN_EN_REVISION',
@@ -73,6 +74,8 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+ALTER TYPE "PracticeStatus" ADD VALUE IF NOT EXISTS 'EN_TRASLADO_EMPRESARIAL';
 
 DO $$ BEGIN
     CREATE TYPE "WorkPlanStatus" AS ENUM (
@@ -303,6 +306,7 @@ CREATE TABLE IF NOT EXISTS "practices" (
     "tutor_id" UUID,
     "director_id" UUID REFERENCES "users"("id") ON DELETE SET NULL,
     "current_status" "PracticeStatus" NOT NULL DEFAULT 'ASPIRANTE',
+    "transfer_status" VARCHAR(50),
     "academic_period" VARCHAR(50) DEFAULT '2026-1',
     "arl_support_url" TEXT,
     "arl_validated_at" TIMESTAMPTZ,
@@ -323,11 +327,32 @@ CREATE TABLE IF NOT EXISTS "practices" (
         "current_status"::text IN (
             'En Trámite', 'Formalizada', 'En Curso', 'Finalizada', 'Cancelada',
             'ASPIRANTE', 'POSTULADO', 'PRESENTADO_A_EMPRESA', 'REUBICACION_PENDIENTE',
-            'ACEPTADO_ARL_PENDIENTE', 'ASIGNADO_FORMALMENTE', 'PLAN_EN_REVISION',
-            'PRACTICA_EN_EJECUCION', 'EVALUACION_PENDIENTE', 'FINALIZADA', 'CERRADA'
+            'EN_TRASLADO_EMPRESARIAL', 'ACEPTADO_ARL_PENDIENTE', 'ASIGNADO_FORMALMENTE',
+            'PLAN_EN_REVISION', 'PRACTICA_EN_EJECUCION', 'EVALUACION_PENDIENTE',
+            'FINALIZADA', 'CERRADA'
         )
     )
 );
+
+ALTER TABLE "practices" ADD COLUMN IF NOT EXISTS "transfer_status" VARCHAR(50);
+
+-- Tabla: practice_transfers (HU20 - Protocolo de Traslado y Reubicación por Ausencia de Tutor Empresarial)
+CREATE TABLE IF NOT EXISTS "practice_transfers" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "practice_id" UUID NOT NULL REFERENCES "practices"("id") ON DELETE CASCADE,
+    "source_company_id" UUID NOT NULL REFERENCES "companies"("id") ON DELETE RESTRICT,
+    "target_company_id" UUID REFERENCES "companies"("id") ON DELETE SET NULL,
+    "reason_code" VARCHAR(100) NOT NULL DEFAULT 'AUSENCIA_TUTOR_EMPRESARIAL',
+    "justification" TEXT,
+    "hours_transferred" INT NOT NULL DEFAULT 0,
+    "approved_by_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE RESTRICT,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS "idx_practice_transfers_practice_id" ON "practice_transfers"("practice_id");
+CREATE INDEX IF NOT EXISTS "idx_practice_transfers_source_company" ON "practice_transfers"("source_company_id");
+CREATE INDEX IF NOT EXISTS "idx_practice_transfers_target_company" ON "practice_transfers"("target_company_id");
+CREATE INDEX IF NOT EXISTS "idx_practice_transfers_approved_by" ON "practice_transfers"("approved_by_id");
 
 -- Restricción de unicidad por estudiante y periodo lectivo para prácticas activas ("Formalizada" o "En Curso") - HU13 Criterio 3
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_estudiante_practica_periodo"
@@ -1020,3 +1045,46 @@ INSERT INTO "periodos_academicos" (
     'c2222222-2222-2222-2222-222222222222'
 )
 ON CONFLICT ("codigo") DO NOTHING;
+
+-- 10. Insertar Entidad UFPS (Contingencia de Última Instancia - HU20 / RN02) y Convenio Institucional
+INSERT INTO "companies" (
+    "id", "nit", "business_name", "legal_representative", "contact_email", "contact_phone", "address", "city", "is_active"
+) VALUES (
+    'a9999999-9999-9999-9999-999999999999',
+    '890500622-6',
+    'Universidad Francisco de Paula Santander (UFPS - Dependencias Internas)',
+    'Dra. Sandra Ortega Sierra (Rectoría / División de Sistemas)',
+    'division.sistemas@ufps.edu.co',
+    '+57 607 5776655',
+    'Av. Gran Colombia No. 12E-96 Barrio Colsag',
+    'Cúcuta',
+    TRUE
+) ON CONFLICT ("nit") DO NOTHING;
+
+INSERT INTO "agreements" (
+    "id", "company_id", "agreement_number", "status", "start_date", "end_date", "signed_by_director", "document_url", "notes"
+) VALUES (
+    'b9999999-9999-9999-9999-999999999999',
+    'a9999999-9999-9999-9999-999999999999',
+    'CONV-UFPS-INTERNO-2026',
+    'VIGENTE',
+    '2026-01-01 00:00:00+00',
+    '2030-12-31 23:59:59+00',
+    TRUE,
+    'https://storage.sigetrap.co/agreements/conv-ufps-interno-2026.pdf',
+    'Convenio institucional interno UFPS (Centro de Cómputo y División de Sistemas) - Alternativa de contingencia de última instancia (HU20)'
+) ON CONFLICT ("agreement_number") DO NOTHING;
+
+INSERT INTO "vacancies" (
+    "id", "company_id", "created_by_id", "title", "description", "requirements", "vacancies_count", "status"
+) VALUES (
+    'd9999999-9999-9999-9999-999999999999',
+    'a9999999-9999-9999-9999-999999999999',
+    'c2222222-2222-2222-2222-222222222222',
+    'Practicante de Ingeniería - Centro de Cómputo y División de Sistemas UFPS (Contingencia)',
+    'Soporte en desarrollo de sistemas académicos internos, infraestructura y transformación digital universitaria.',
+    'Competencias en TypeScript, React, Node.js, SQL, Desarrollo de Software e Ingeniería de Sistemas.',
+    5,
+    'PUBLICADA'
+) ON CONFLICT ("id") DO NOTHING;
+

@@ -58,21 +58,32 @@ export class PracticeWorkflowService {
     ],
     REUBICACION_PENDIENTE: [
       { target: 'POSTULADO', allowedRoles: ['ESTUDIANTE', 'DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'PRACTICA_EN_EJECUCION', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'ASIGNADO_FORMALMENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+    ],
+    EN_TRASLADO_EMPRESARIAL: [
+      { target: 'PRACTICA_EN_EJECUCION', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'ASIGNADO_FORMALMENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'REUBICACION_PENDIENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
     ],
     ACEPTADO_ARL_PENDIENTE: [
       { target: 'ASIGNADO_FORMALMENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] }, // RN-06: Validación de ARL
       { target: 'REUBICACION_PENDIENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'EN_TRASLADO_EMPRESARIAL', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
     ],
     ASIGNADO_FORMALMENTE: [
       { target: 'PLAN_EN_REVISION', allowedRoles: ['ESTUDIANTE', 'DOCENTE_PRACTICA', 'TUTOR_EMPRESARIAL', 'DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'EN_TRASLADO_EMPRESARIAL', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
     ],
     PLAN_EN_REVISION: [
       { target: 'PRACTICA_EN_EJECUCION', allowedRoles: ['DIRECTOR_PROGRAMA', 'DOCENTE_PRACTICA', 'ADMIN'] }, // RN-07, RN-08
       { target: 'REUBICACION_PENDIENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'EN_TRASLADO_EMPRESARIAL', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
     ],
     PRACTICA_EN_EJECUCION: [
       { target: 'EVALUACION_PENDIENTE', allowedRoles: ['DOCENTE_PRACTICA', 'DIRECTOR_PROGRAMA', 'ADMIN'] },
       { target: 'REUBICACION_PENDIENTE', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
+      { target: 'EN_TRASLADO_EMPRESARIAL', allowedRoles: ['DIRECTOR_PROGRAMA', 'ADMIN'] },
     ],
     EVALUACION_PENDIENTE: [
       { target: 'FINALIZADA', allowedRoles: ['DOCENTE_PRACTICA', 'DIRECTOR_PROGRAMA', 'ADMIN'] },
