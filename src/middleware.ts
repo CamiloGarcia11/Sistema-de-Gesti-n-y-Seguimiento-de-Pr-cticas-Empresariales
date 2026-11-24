@@ -33,6 +33,7 @@ export function middleware(request: NextRequest) {
   const isProtectedAppRoute =
     pathname.startsWith('/vacantes') ||
     pathname.startsWith('/empresas') ||
+    pathname.startsWith('/convenios') ||
     pathname.startsWith('/estudiante') ||
     isPeriodosRoute ||
     isDashboardRoute || // NUEVO
@@ -182,6 +183,7 @@ export const config = {
     '/api/v1/admin/:path*',
     '/vacantes/:path*',
     '/empresas/:path*',
+    '/convenios/:path*',
     '/estudiantes/:path*',
     '/estudiante/:path*',
     '/periodos/:path*',

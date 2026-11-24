@@ -193,20 +193,70 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
       signedByDirector: 'signed_by_director',
       notes: 'notes',
       observations: 'notes',
+      juridicaRadicadoNumber: 'juridica_radicado_number',
+      juridicaApprovalDate: 'juridica_approval_date',
+      juridicaConceptUrl: 'juridica_concept_url',
+      juridicaObservations: 'juridica_observations',
+      juridicaReviewedAt: 'juridica_reviewed_at',
+      juridicaReviewedById: 'juridica_reviewed_by_id',
+      sentToJuridicaAt: 'sent_to_juridica_at',
+      sentToJuridicaById: 'sent_to_juridica_by_id',
+      juridicaHistory: 'juridica_history',
       createdAt: 'created_at',
       updatedAt: 'updated_at',
       deletedAt: 'deleted_at',
     },
-    dateFields: ['startDate', 'endDate', 'createdAt', 'updatedAt', 'deletedAt'],
+    dateFields: [
+      'startDate',
+      'endDate',
+      'juridicaApprovalDate',
+      'juridicaReviewedAt',
+      'sentToJuridicaAt',
+      'createdAt',
+      'updatedAt',
+      'deletedAt',
+    ],
     numberFields: [],
     defaults: {
       id: () => crypto.randomUUID(),
-      status: () => 'EN_TRAMITE',
+      status: () => 'BORRADOR',
+      signedByDirector: () => false,
       createdAt: () => new Date().toISOString(),
       updatedAt: () => new Date().toISOString(),
     },
     relations: {
       company: { type: 'belongsTo', targetModel: 'company', foreignKey: 'companyId' },
+      prerequisites: { type: 'hasMany', targetModel: 'agreementPrerequisite', foreignKey: 'agreementId' },
+    },
+  },
+  agreementPrerequisite: {
+    table: 'agreement_prerequisites',
+    fields: {
+      id: 'id',
+      agreementId: 'agreement_id',
+      documentType: 'document_type',
+      fileUrl: 'file_url',
+      fileName: 'file_name',
+      mimeType: 'mime_type',
+      issuedAt: 'issued_at',
+      verificationStatus: 'verification_status',
+      observations: 'observations',
+      uploadedById: 'uploaded_by_id',
+      reviewedById: 'reviewed_by_id',
+      reviewedAt: 'reviewed_at',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+    dateFields: ['issuedAt', 'reviewedAt', 'createdAt', 'updatedAt'],
+    numberFields: [],
+    defaults: {
+      id: () => crypto.randomUUID(),
+      verificationStatus: () => 'PENDIENTE',
+      createdAt: () => new Date().toISOString(),
+      updatedAt: () => new Date().toISOString(),
+    },
+    relations: {
+      agreement: { type: 'belongsTo', targetModel: 'agreement', foreignKey: 'agreementId' },
     },
   },
   vacancy: {
@@ -700,6 +750,8 @@ const MODEL_SCHEMAS: Record<string, ModelSchema> = {
 
 const fallbackPracticeTransfers: Map<string, Record<string, any>> = new Map();
 const fallbackPracticeState: Map<string, { transferStatus?: string | null; currentStatus?: string }> = new Map();
+const fallbackAgreementPrerequisites: Map<string, Record<string, any>> = new Map();
+const fallbackAgreementState: Map<string, Record<string, any>> = new Map();
 
 function getReverseFields(schema: ModelSchema): Record<string, string> {
   const rev: Record<string, string> = {};
@@ -739,6 +791,16 @@ function rowToModel(modelName: string, row: Record<string, any>): Record<string,
     }
     if (out.transferStatus === undefined) {
       out.transferStatus = null;
+    }
+  }
+  if (modelName === 'agreement' && out.id) {
+    const fbAg = fallbackAgreementState.get(out.id);
+    if (fbAg) {
+      for (const [k, v] of Object.entries(fbAg)) {
+        if (v !== undefined && (out[k] === null || out[k] === undefined || k === 'status')) {
+          out[k] = v;
+        }
+      }
     }
   }
   return out;
@@ -1184,6 +1246,97 @@ async function supabaseFetch(
       });
     }
 
+    // Fallback resiliente si la tabla agreement_prerequisites o columnas/enum jurídicos en agreements aún no se han migrado en la nube
+    if (table === 'agreement_prerequisites' && (res.status === 404 || pgCode === 'PGRST205' || pgCode === '42P01')) {
+      const method = options.method || 'GET';
+      if (method === 'GET') {
+        return Array.from(fallbackAgreementPrerequisites.values());
+      } else if (method === 'POST' && options.body) {
+        const row = {
+          id: options.body.id || crypto.randomUUID(),
+          agreement_id: options.body.agreement_id,
+          document_type: options.body.document_type,
+          file_url: options.body.file_url,
+          file_name: options.body.file_name ?? null,
+          mime_type: options.body.mime_type ?? null,
+          issued_at: options.body.issued_at ?? null,
+          verification_status: options.body.verification_status || 'PENDIENTE',
+          observations: options.body.observations ?? null,
+          uploaded_by_id: options.body.uploaded_by_id ?? null,
+          reviewed_by_id: options.body.reviewed_by_id ?? null,
+          reviewed_at: options.body.reviewed_at ?? null,
+          created_at: options.body.created_at || new Date().toISOString(),
+          updated_at: options.body.updated_at || new Date().toISOString(),
+        };
+        fallbackAgreementPrerequisites.set(row.id, row);
+        return [row];
+      } else if (method === 'PATCH' && options.body && options.query) {
+        const idMatch = options.query.match(/id=eq\.([^&]+)/);
+        const targetId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+        if (targetId && fallbackAgreementPrerequisites.has(targetId)) {
+          const updated = { ...fallbackAgreementPrerequisites.get(targetId)!, ...options.body };
+          fallbackAgreementPrerequisites.set(targetId, updated);
+          return [updated];
+        }
+        return [];
+      } else if (method === 'DELETE' && options.query) {
+        const idMatch = options.query.match(/id=eq\.([^&]+)/);
+        const targetId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+        if (targetId) fallbackAgreementPrerequisites.delete(targetId);
+        return [];
+      }
+    }
+
+    if (
+      table === 'agreements' &&
+      options.body &&
+      (pgCode === 'PGRST204' ||
+        pgCode === '22P02' ||
+        String(msg).includes('juridica_') ||
+        String(msg).includes('sent_to_juridica') ||
+        String(msg).includes('AgreementStatus'))
+    ) {
+      const sanitizedBody = { ...options.body };
+      const idMatch = options.query?.match(/id=eq\.([^&]+)/);
+      const agreementId = sanitizedBody.id || (idMatch ? decodeURIComponent(idMatch[1]) : null);
+      if (agreementId) {
+        const prev = fallbackAgreementState.get(agreementId) || {};
+        fallbackAgreementState.set(agreementId, {
+          ...prev,
+          status: sanitizedBody.status ?? prev.status,
+          juridicaRadicadoNumber: sanitizedBody.juridica_radicado_number ?? prev.juridicaRadicadoNumber,
+          juridicaApprovalDate: sanitizedBody.juridica_approval_date ? new Date(sanitizedBody.juridica_approval_date) : prev.juridicaApprovalDate,
+          juridicaConceptUrl: sanitizedBody.juridica_concept_url ?? prev.juridicaConceptUrl,
+          juridicaObservations: sanitizedBody.juridica_observations ?? prev.juridicaObservations,
+          juridicaReviewedAt: sanitizedBody.juridica_reviewed_at ? new Date(sanitizedBody.juridica_reviewed_at) : prev.juridicaReviewedAt,
+          juridicaReviewedById: sanitizedBody.juridica_reviewed_by_id ?? prev.juridicaReviewedById,
+          sentToJuridicaAt: sanitizedBody.sent_to_juridica_at ? new Date(sanitizedBody.sent_to_juridica_at) : prev.sentToJuridicaAt,
+          sentToJuridicaById: sanitizedBody.sent_to_juridica_by_id ?? prev.sentToJuridicaById,
+          juridicaHistory: sanitizedBody.juridica_history ?? prev.juridicaHistory,
+        });
+      }
+      for (const col of [
+        'juridica_radicado_number',
+        'juridica_approval_date',
+        'juridica_concept_url',
+        'juridica_observations',
+        'juridica_reviewed_at',
+        'juridica_reviewed_by_id',
+        'sent_to_juridica_at',
+        'sent_to_juridica_by_id',
+        'juridica_history',
+      ]) {
+        delete sanitizedBody[col];
+      }
+      if (
+        sanitizedBody.status &&
+        ['BORRADOR', 'PENDIENTE_JURIDICA_UFPS', 'OBSERVADO_JURIDICA', 'APROBADO_JURIDICA'].includes(sanitizedBody.status)
+      ) {
+        sanitizedBody.status = 'EN_TRAMITE';
+      }
+      return supabaseFetch(table, { ...options, body: sanitizedBody });
+    }
+
     const err: any = new Error(`${msg} ${details}`.trim());
     err.code = pgCode === '23505' ? 'P2002' : pgCode;
     err.pgCode = pgCode;
@@ -1204,7 +1357,7 @@ function createSupabasePrismaClient(): PrismaClient {
       const queryParts: string[] = ['select=*'];
       if (simpleWhere && !simpleWhere.OR && !simpleWhere.AND && !simpleWhere.NOT) {
         for (const [k, v] of Object.entries(simpleWhere)) {
-          if (k === 'transferStatus' || v === 'EN_TRASLADO_EMPRESARIAL') continue;
+          if (k === 'transferStatus' || v === 'EN_TRASLADO_EMPRESARIAL' || (modelName === 'agreement' && k === 'status')) continue;
           const col = schema.fields[k];
           if (!col) continue;
           if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {

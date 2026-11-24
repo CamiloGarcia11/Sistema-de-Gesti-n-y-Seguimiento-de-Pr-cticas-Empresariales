@@ -12,10 +12,32 @@ export type Role =
   | 'ADMIN';
 
 export type AgreementStatus =
+  | 'BORRADOR'
   | 'EN_TRAMITE'
+  | 'PENDIENTE_JURIDICA_UFPS'
+  | 'OBSERVADO_JURIDICA'
+  | 'APROBADO_JURIDICA'
   | 'VIGENTE'
   | 'VENCIDO'
   | 'CANCELADO';
+
+export type AgreementPrerequisiteDocumentType =
+  | 'BORRADOR_MINUTA'
+  | 'REPRESENTANTE_DIRECTIVA'
+  | 'ANTECEDENTES_LEGALES';
+
+export const REQUIRED_AGREEMENT_PREREQUISITES: readonly AgreementPrerequisiteDocumentType[] = [
+  'BORRADOR_MINUTA',
+  'REPRESENTANTE_DIRECTIVA',
+  'ANTECEDENTES_LEGALES',
+] as const;
+
+export type AgreementPrerequisiteVerificationStatus =
+  | 'PENDIENTE'
+  | 'VERIFICADO'
+  | 'OBSERVADO';
+
+export type JuridicaDecisionType = 'APROBADO' | 'DEVUELTO';
 
 export type VacancyStatus =
   | 'BORRADOR'
@@ -265,6 +287,17 @@ export interface CompanyResponseDTO {
     status: AgreementStatus;
     startDate: Date;
     endDate: Date;
+    documentUrl?: string | null;
+  } | null;
+  latestAgreement?: {
+    id: string;
+    agreementNumber: string;
+    status: AgreementStatus;
+    startDate: Date;
+    endDate: Date;
+    documentUrl?: string | null;
+    juridicaRadicadoNumber?: string | null;
+    juridicaApprovalDate?: Date | null;
   } | null;
   tutorsCount?: number;
   practicesCount?: number;
@@ -1533,5 +1566,126 @@ export interface ConfirmPracticeTransferResultDTO {
   };
   message: string;
 }
+
+// ------------------------------------------------------------------------------
+// DTOs de Prerrequisitos Documentales y Revisión Jurídica UFPS de Convenios
+// ------------------------------------------------------------------------------
+
+export interface AgreementPrerequisiteItemDTO {
+  id: string;
+  agreementId: string;
+  documentType: AgreementPrerequisiteDocumentType;
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  issuedAt: string | null;
+  daysSinceIssued: number | null;
+  isWithin30DaysValidity: boolean | null;
+  verificationStatus: AgreementPrerequisiteVerificationStatus;
+  observations: string | null;
+  uploadedById: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JuridicaHistoryEntryDTO {
+  id: string;
+  decision: JuridicaDecisionType;
+  radicadoNumber: string;
+  reviewedAt: string;
+  approvalDate?: string | null;
+  conceptUrl?: string | null;
+  observations?: string | null;
+  observedDocuments?: AgreementPrerequisiteDocumentType[];
+  reviewerId: string;
+  reviewerName: string;
+  reviewerEmail: string;
+  previousStatus: AgreementStatus;
+  newStatus: AgreementStatus;
+  companyNotified?: boolean;
+}
+
+export interface AgreementResponseDTO {
+  id: string;
+  companyId: string;
+  agreementNumber: string;
+  status: AgreementStatus;
+  startDate: string;
+  endDate: string;
+  documentUrl: string | null;
+  signedByDirector: boolean;
+  notes: string | null;
+  juridicaRadicadoNumber: string | null;
+  juridicaApprovalDate: string | null;
+  juridicaConceptUrl: string | null;
+  juridicaObservations: string | null;
+  juridicaReviewedAt: string | null;
+  juridicaReviewedById: string | null;
+  sentToJuridicaAt: string | null;
+  sentToJuridicaById: string | null;
+  juridicaHistory: JuridicaHistoryEntryDTO[];
+  company?: {
+    id: string;
+    nit: string;
+    businessName: string;
+    legalRepresentative: string;
+    contactEmail: string;
+    contactPhone: string;
+    city: string;
+  } | null;
+  prerequisites: AgreementPrerequisiteItemDTO[];
+  checklist: {
+    hasBorradorMinuta: boolean;
+    hasRepresentanteDirectiva: boolean;
+    hasAntecedentesLegales: boolean;
+    antecedentesWithin30Days: boolean;
+    allRequiredUploaded: boolean;
+    canSendToJuridica: boolean;
+    missingDocuments: AgreementPrerequisiteDocumentType[];
+    isFormalizableForPractices: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAgreementDTO {
+  companyId: string;
+  agreementNumber?: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  documentUrl?: string | null;
+  notes?: string | null;
+}
+
+export interface UploadPrerequisiteInputDTO {
+  documentType: AgreementPrerequisiteDocumentType | string;
+  fileUrl: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  issuedAt?: string | Date | null;
+  observations?: string | null;
+}
+
+export interface SendToJuridicaDTO {
+  notes?: string;
+}
+
+export interface JuridicaDictamenDTO {
+  decision: JuridicaDecisionType | string;
+  radicadoNumber?: string;
+  juridicaRadicadoNumber?: string;
+  approvalDate?: string | Date;
+  juridicaApprovalDate?: string | Date;
+  conceptUrl?: string;
+  juridicaConceptUrl?: string;
+  observations?: string;
+  juridicaObservations?: string;
+  observedDocuments?: Array<AgreementPrerequisiteDocumentType | string>;
+  activateImmediately?: boolean;
+  targetStatus?: 'APROBADO_JURIDICA' | 'VIGENTE';
+}
+
 
 

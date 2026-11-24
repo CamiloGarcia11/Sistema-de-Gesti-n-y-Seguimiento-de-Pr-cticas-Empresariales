@@ -39,10 +39,24 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE "AgreementStatus" AS ENUM ('EN_TRAMITE', 'VIGENTE', 'VENCIDO', 'CANCELADO');
+    CREATE TYPE "AgreementStatus" AS ENUM (
+        'BORRADOR',
+        'EN_TRAMITE',
+        'PENDIENTE_JURIDICA_UFPS',
+        'OBSERVADO_JURIDICA',
+        'APROBADO_JURIDICA',
+        'VIGENTE',
+        'VENCIDO',
+        'CANCELADO'
+    );
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+ALTER TYPE "AgreementStatus" ADD VALUE IF NOT EXISTS 'BORRADOR';
+ALTER TYPE "AgreementStatus" ADD VALUE IF NOT EXISTS 'PENDIENTE_JURIDICA_UFPS';
+ALTER TYPE "AgreementStatus" ADD VALUE IF NOT EXISTS 'OBSERVADO_JURIDICA';
+ALTER TYPE "AgreementStatus" ADD VALUE IF NOT EXISTS 'APROBADO_JURIDICA';
 
 DO $$ BEGIN
     CREATE TYPE "VacancyStatus" AS ENUM ('BORRADOR', 'PUBLICADA', 'EN_SELECCION', 'CUBIERTA', 'CANCELADA');
@@ -226,21 +240,62 @@ SELECT
 FROM "users"
 WHERE "role" = 'TUTOR_EMPRESARIAL' AND "deleted_at" IS NULL;
 
--- Tabla: agreements (Convenios marco e interinstitucionales - RN-01)
+-- Tabla: agreements (Convenios marco e interinstitucionales - RN-01 y Flujo Jurídica UFPS)
 CREATE TABLE IF NOT EXISTS "agreements" (
     "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "company_id" UUID NOT NULL REFERENCES "companies"("id") ON DELETE RESTRICT,
     "agreement_number" VARCHAR(100) NOT NULL UNIQUE,
-    "status" "AgreementStatus" NOT NULL DEFAULT 'EN_TRAMITE',
+    "status" "AgreementStatus" NOT NULL DEFAULT 'BORRADOR',
     "start_date" TIMESTAMPTZ NOT NULL,
     "end_date" TIMESTAMPTZ NOT NULL,
     "document_url" TEXT,
     "signed_by_director" BOOLEAN NOT NULL DEFAULT FALSE,
     "notes" TEXT,
+    "juridica_radicado_number" VARCHAR(100),
+    "juridica_approval_date" TIMESTAMPTZ,
+    "juridica_concept_url" TEXT,
+    "juridica_observations" TEXT,
+    "juridica_reviewed_at" TIMESTAMPTZ,
+    "juridica_reviewed_by_id" UUID,
+    "sent_to_juridica_at" TIMESTAMPTZ,
+    "sent_to_juridica_by_id" UUID,
+    "juridica_history" JSONB,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "deleted_at" TIMESTAMPTZ
 );
+
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_radicado_number" VARCHAR(100);
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_approval_date" TIMESTAMPTZ;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_concept_url" TEXT;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_observations" TEXT;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_reviewed_at" TIMESTAMPTZ;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_reviewed_by_id" UUID;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "sent_to_juridica_at" TIMESTAMPTZ;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "sent_to_juridica_by_id" UUID;
+ALTER TABLE "agreements" ADD COLUMN IF NOT EXISTS "juridica_history" JSONB;
+
+-- Tabla: agreement_prerequisites (Prerrequisitos documentales obligatorios del convenio ante Jurídica UFPS)
+CREATE TABLE IF NOT EXISTS "agreement_prerequisites" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "agreement_id" UUID NOT NULL REFERENCES "agreements"("id") ON DELETE CASCADE,
+    "document_type" VARCHAR(80) NOT NULL,
+    "file_url" TEXT NOT NULL,
+    "file_name" VARCHAR(255),
+    "mime_type" VARCHAR(120),
+    "issued_at" TIMESTAMPTZ,
+    "verification_status" VARCHAR(40) NOT NULL DEFAULT 'PENDIENTE',
+    "observations" TEXT,
+    "uploaded_by_id" UUID,
+    "reviewed_by_id" UUID,
+    "reviewed_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT "uq_agreement_prerequisite_type" UNIQUE ("agreement_id", "document_type")
+);
+
+CREATE INDEX IF NOT EXISTS "idx_agreement_prerequisites_agreement_id" ON "agreement_prerequisites"("agreement_id");
+CREATE INDEX IF NOT EXISTS "idx_agreement_prerequisites_status" ON "agreement_prerequisites"("verification_status");
 
 -- Tabla: vacancies (Ofertas de práctica empresarial)
 CREATE TABLE IF NOT EXISTS "vacancies" (

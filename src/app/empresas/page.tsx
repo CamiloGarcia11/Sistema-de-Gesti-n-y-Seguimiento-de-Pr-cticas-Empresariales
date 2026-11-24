@@ -1066,7 +1066,23 @@ export default function EmpresasPage() {
                         <td className="py-3 px-4">
                           {company.activeAgreement ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3" /> Convenio Vigente ({company.activeAgreement.agreementNumber})
+                              <CheckCircle2 className="w-3 h-3" /> Vigente ({company.activeAgreement.agreementNumber})
+                            </span>
+                          ) : company.latestAgreement?.status === 'PENDIENTE_JURIDICA_UFPS' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <ShieldCheck className="w-3 h-3" /> Pendiente Jurídica UFPS ({company.latestAgreement.agreementNumber})
+                            </span>
+                          ) : company.latestAgreement?.status === 'OBSERVADO_JURIDICA' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                              <AlertTriangle className="w-3 h-3" /> Observado Jurídica ({company.latestAgreement.agreementNumber})
+                            </span>
+                          ) : company.latestAgreement?.status === 'APROBADO_JURIDICA' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                              <FileCheck className="w-3 h-3" /> Aprobado Jurídica ({company.latestAgreement.agreementNumber})
+                            </span>
+                          ) : company.latestAgreement ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                              <FileCheck className="w-3 h-3" /> {company.latestAgreement.status} ({company.latestAgreement.agreementNumber})
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -1080,6 +1096,14 @@ export default function EmpresasPage() {
                           <div className="inline-flex items-center gap-1.5 flex-wrap justify-end">
                             {canRegisterCompany && (
                               <>
+                                <Link
+                                  href={`/convenios?companyId=${company.id}`}
+                                  title="Gestionar Prerrequisitos y Revisión Jurídica UFPS"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all"
+                                >
+                                  <FileCheck className="w-3 h-3" />
+                                  <span>Jurídica</span>
+                                </Link>
                                 <button
                                   onClick={() => handleOpenEditCompany(company)}
                                   title="Editar empresa y gestionar Convenio Marco (HU08)"
@@ -1589,8 +1613,12 @@ export default function EmpresasPage() {
                         onChange={(e) => setEditCompanyData({ ...editCompanyData, agreementStatus: e.target.value })}
                         className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
                       >
-                        <option value="VIGENTE">VIGENTE</option>
+                        <option value="BORRADOR">BORRADOR</option>
                         <option value="EN_TRAMITE">EN TRÁMITE</option>
+                        <option value="PENDIENTE_JURIDICA_UFPS">PENDIENTE JURÍDICA UFPS</option>
+                        <option value="OBSERVADO_JURIDICA">OBSERVADO JURÍDICA</option>
+                        <option value="APROBADO_JURIDICA">APROBADO JURÍDICA</option>
+                        <option value="VIGENTE">VIGENTE</option>
                         <option value="VENCIDO">VENCIDO</option>
                       </select>
                     </div>

@@ -17,6 +17,7 @@ import {
   FileText,
   ClipboardCheck,
   ArrowRightLeft,
+  Scale,
 } from 'lucide-react';
 import { UserResponseDTO } from '@/types';
 
@@ -126,6 +127,16 @@ export default function Navbar({ currentUser, onLogout }: NavbarProps) {
                 <Building2 className="w-3.5 h-3.5" />
                 <span>Empresas</span>
               </Link>
+
+              {currentUser.role !== 'ESTUDIANTE' && (
+                <Link
+                  href="/convenios"
+                  className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Scale className="w-3.5 h-3.5" />
+                  <span>Convenios</span>
+                </Link>
+              )}
 
               {(currentUser.role === 'DIRECTOR_PROGRAMA' || currentUser.role === 'ADMIN' || currentUser.role === 'DOCENTE_PRACTICA') && (
                 <Link

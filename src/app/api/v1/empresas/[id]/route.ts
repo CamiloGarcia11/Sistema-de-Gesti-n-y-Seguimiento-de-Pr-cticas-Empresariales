@@ -32,7 +32,18 @@ const updateCompanySchema = z.object({
   agreement: z
     .object({
       agreementNumber: z.string().min(3),
-      status: z.enum(['EN_TRAMITE', 'VIGENTE', 'VENCIDO', 'CANCELADO']).default('VIGENTE'),
+      status: z
+        .enum([
+          'BORRADOR',
+          'EN_TRAMITE',
+          'PENDIENTE_JURIDICA_UFPS',
+          'OBSERVADO_JURIDICA',
+          'APROBADO_JURIDICA',
+          'VIGENTE',
+          'VENCIDO',
+          'CANCELADO',
+        ])
+        .default('BORRADOR'),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
       documentUrl: z.string().optional().nullable(),
@@ -135,6 +146,27 @@ export async function PUT(
         orderBy: { createdAt: 'desc' },
       });
 
+      const targetStatus = agreement.status;
+      if (
+        targetStatus === 'VIGENTE' &&
+        (!existingAgreement ||
+          (existingAgreement.status !== 'APROBADO_JURIDICA' &&
+            existingAgreement.status !== 'VIGENTE'))
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'JURIDICA_APPROVAL_REQUIRED',
+              message:
+                'Ningún convenio puede formalizarse en estado VIGENTE sin completar los prerrequisitos documentales y obtener el visto bueno previo de la Oficina de Jurídica UFPS.',
+            },
+            timestamp: new Date().toISOString(),
+          },
+          { status: 422 }
+        );
+      }
+
       const start = agreement.startDate ? new Date(agreement.startDate) : new Date();
       const end = agreement.endDate
         ? new Date(agreement.endDate)
@@ -145,7 +177,7 @@ export async function PUT(
           where: { id: existingAgreement.id },
           data: {
             agreementNumber: agreement.agreementNumber.trim(),
-            status: agreement.status,
+            status: targetStatus,
             startDate: start,
             endDate: end,
             documentUrl: agreement.documentUrl ?? existingAgreement.documentUrl,
@@ -157,7 +189,7 @@ export async function PUT(
           data: {
             companyId: id,
             agreementNumber: agreement.agreementNumber.trim(),
-            status: agreement.status,
+            status: targetStatus,
             startDate: start,
             endDate: end,
             documentUrl: agreement.documentUrl || null,
