@@ -24,6 +24,9 @@ import {
   companyRepository,
 } from '@/server/repositories/company.repository';
 import {
+  AgreementRepository,
+} from '@/server/repositories/agreement.repository';
+import {
   AuthenticatedUser,
   FormalizePracticeDTO,
   FormalizePracticeResponseDTO,
@@ -181,7 +184,8 @@ export class PracticeFormalizationService {
   constructor(
     private practiceRepo: PracticeRepository = practiceRepository,
     private userRepo: UserRepository = userRepository,
-    private companyRepo: CompanyRepository = companyRepository
+    private companyRepo: CompanyRepository = companyRepository,
+    private agreementRepo?: AgreementRepository
   ) {}
 
   /**
@@ -533,6 +537,40 @@ export class PracticeFormalizationService {
       );
     }
 
+    // 6.1 RN01 (Flujo Jurídica UFPS): Bloqueo de formalización anticipada sin visto bueno de Jurídica UFPS
+    if (this.agreementRepo) {
+      const approvedAgreement = await this.agreementRepo.findApprovedOrActiveAgreementByCompanyId(companyId);
+      if (!approvedAgreement) {
+        throw new PracticeFormalizationError(
+          'RN01: Ningún estudiante puede ser formalizado en una práctica vinculada a una empresa cuyo convenio no cuente con el visto bueno final de Jurídica UFPS (APROBADO_JURIDICA o VIGENTE).',
+          'RN01_AGREEMENT_NOT_APPROVED_BY_JURIDICA',
+          422,
+          'companyId',
+          'fk_practica_convenio_juridica'
+        );
+      }
+    } else {
+      const companyWithAgreements: any = await this.companyRepo.findById(companyId);
+      if (companyWithAgreements && Array.isArray(companyWithAgreements.agreements)) {
+        const now = new Date();
+        const hasValidApprovedAgreement = companyWithAgreements.agreements.some(
+          (ag: any) =>
+            !ag.deletedAt &&
+            (ag.status === 'APROBADO_JURIDICA' || ag.status === 'VIGENTE') &&
+            new Date(ag.endDate) >= now
+        );
+        if (!hasValidApprovedAgreement) {
+          throw new PracticeFormalizationError(
+            'RN01: Ningún estudiante puede ser formalizado en una práctica vinculada a una empresa cuyo convenio no cuente con el visto bueno final de Jurídica UFPS (APROBADO_JURIDICA o VIGENTE).',
+            'RN01_AGREEMENT_NOT_APPROVED_BY_JURIDICA',
+            422,
+            'companyId',
+            'fk_practica_convenio_juridica'
+          );
+        }
+      }
+    }
+
     // 7. Generar la fecha oficial de inicio (Criterio 1)
     const rawStartDate = dto.startDate ?? dto.fechaInicio;
     const officialStartDate = rawStartDate ? new Date(rawStartDate) : new Date();
@@ -835,6 +873,21 @@ export class PracticeFormalizationService {
       domainStatus = 'Cancelada';
     }
 
+    const companyAgreements = Array.isArray((practice.company as any)?.agreements)
+      ? (practice.company as any).agreements
+      : null;
+    const now = new Date();
+    const validApprovedAgreement = companyAgreements
+      ? companyAgreements.find(
+          (ag: any) =>
+            !ag.deletedAt &&
+            (ag.status === 'APROBADO_JURIDICA' || ag.status === 'VIGENTE') &&
+            new Date(ag.endDate) >= now
+        )
+      : null;
+    const hasApprovedAgreement = companyAgreements ? Boolean(validApprovedAgreement) : true;
+    const latestAgreement = companyAgreements?.[0] || null;
+
     return {
       practiceId: practice.id,
       student: practice.student,
@@ -848,6 +901,15 @@ export class PracticeFormalizationService {
       teacher: practice.teacher,
       tutorId: practice.tutorId,
       tutor: practice.tutor,
+      agreement: latestAgreement
+        ? {
+            id: latestAgreement.id,
+            agreementNumber: latestAgreement.agreementNumber,
+            status: latestAgreement.status,
+            juridicaRadicadoNumber: latestAgreement.juridicaRadicadoNumber ?? null,
+            juridicaApprovalDate: latestAgreement.juridicaApprovalDate ?? null,
+          }
+        : null,
       workPlan: practice.workPlan
         ? {
             id: practice.workPlan.id,
@@ -864,8 +926,12 @@ export class PracticeFormalizationService {
         hasTeacherTutor: Boolean(practice.teacherId),
         hasExternalTutor: Boolean(practice.tutorId),
         hasApprovedWorkPlan: wpEval.isApproved,
+        hasApprovedAgreement,
         canFormalize:
-          Boolean(practice.teacherId) && Boolean(practice.tutorId) && wpEval.isApproved,
+          Boolean(practice.teacherId) &&
+          Boolean(practice.tutorId) &&
+          wpEval.isApproved &&
+          hasApprovedAgreement,
       },
       availableTeachers: teachersResult.users.map((t) => ({
         id: t.id,

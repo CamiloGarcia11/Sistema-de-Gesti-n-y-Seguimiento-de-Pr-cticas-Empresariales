@@ -307,6 +307,7 @@ export class CompanyManagementService {
         new Date(a.startDate) <= now &&
         new Date(a.endDate) >= now
     );
+    const latestAgreement = company.agreements?.[0] ?? null;
 
     return {
       id: company.id,
@@ -326,6 +327,19 @@ export class CompanyManagementService {
             status: activeAgreement.status,
             startDate: activeAgreement.startDate,
             endDate: activeAgreement.endDate,
+            documentUrl: activeAgreement.documentUrl ?? null,
+          }
+        : null,
+      latestAgreement: latestAgreement
+        ? {
+            id: latestAgreement.id,
+            agreementNumber: latestAgreement.agreementNumber,
+            status: latestAgreement.status,
+            startDate: latestAgreement.startDate,
+            endDate: latestAgreement.endDate,
+            documentUrl: latestAgreement.documentUrl ?? null,
+            juridicaRadicadoNumber: latestAgreement.juridicaRadicadoNumber ?? null,
+            juridicaApprovalDate: latestAgreement.juridicaApprovalDate ?? null,
           }
         : null,
       tutorsCount: company._count?.tutors ?? 0,

@@ -136,8 +136,8 @@ export class PracticeWorkflowService {
       );
     }
 
-    // 4. Validar Regla RN-01 (Convenio Obligatorio Vigente)
-    await this.validateAgreementIsActive(practice.companyId);
+    // 4. Validar Regla RN-01 (Convenio Obligatorio Vigente / Aprobado por Jurídica UFPS)
+    await this.validateAgreementIsActive(practice.companyId, targetStatus);
 
     // 5. Aplicar Reglas Específicas según Estado Destino
     const additionalData: Prisma.PracticeUpdateInput = {};
@@ -264,15 +264,23 @@ export class PracticeWorkflowService {
   }
 
   /**
-   * Valida que la empresa asociada tenga un convenio vigente no vencido (RN-01)
+   * Valida que la empresa asociada tenga un convenio vigente o aprobado por Jurídica UFPS (RN-01 / RN01)
    */
-  private async validateAgreementIsActive(companyId: string): Promise<void> {
-    const activeAgreement = await this.agreementRepo.findActiveAgreementByCompanyId(companyId);
+  private async validateAgreementIsActive(
+    companyId: string,
+    targetStatus?: PracticeStatus
+  ): Promise<void> {
+    const activeAgreement =
+      targetStatus === 'ASIGNADO_FORMALMENTE' &&
+      typeof this.agreementRepo.findApprovedOrActiveAgreementByCompanyId === 'function'
+        ? await this.agreementRepo.findApprovedOrActiveAgreementByCompanyId(companyId)
+        : await this.agreementRepo.findActiveAgreementByCompanyId(companyId);
+
     if (!activeAgreement) {
       throw new BusinessRuleError(
-        'RN-01: La empresa no cuenta con un convenio VIGENTE activo. Operación bloqueada.',
+        'RN-01: La empresa no cuenta con un convenio aprobado por Jurídica UFPS ni VIGENTE activo. Operación bloqueada.',
         'RN01_AGREEMENT_NOT_ACTIVE',
-        400
+        422
       );
     }
   }

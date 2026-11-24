@@ -114,6 +114,11 @@ export default function EstudiantesPage() {
   const [isSubmittingFormalization, setIsSubmittingFormalization] = useState(false);
   const [formalizationError, setFormalizationError] = useState<string | null>(null);
   const [formalizationSuccess, setFormalizationSuccess] = useState<string | null>(null);
+  const [formalizationAgreementInfo, setFormalizationAgreementInfo] = useState<{
+    hasApprovedAgreement: boolean;
+    agreementNumber?: string | null;
+    status?: string | null;
+  } | null>(null);
 
   // Cargar usuario autenticado
   useEffect(() => {
@@ -453,6 +458,11 @@ export default function EstudiantesPage() {
         if (details.academicPeriod) {
           setFormalizationPeriod(details.academicPeriod);
         }
+        setFormalizationAgreementInfo({
+          hasApprovedAgreement: details.requirementsChecklist?.hasApprovedAgreement ?? true,
+          agreementNumber: details.agreement?.agreementNumber ?? null,
+          status: details.agreement?.status ?? null,
+        });
       }
     } catch (e) {
       console.error('Error cargando detalles de formalización:', e);
@@ -1327,6 +1337,30 @@ export default function EstudiantesPage() {
                 </div>
               ) : (
                 <form onSubmit={handleConfirmFormalization} className="space-y-4">
+                  {formalizationAgreementInfo && !formalizationAgreementInfo.hasApprovedAgreement && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold">
+                          RN01: Convenio sin Visto Bueno Final de Jurídica UFPS
+                        </p>
+                        <p className="text-[11px] text-amber-800">
+                          Estado actual del convenio:{' '}
+                          <code className="font-mono font-bold">
+                            {formalizationAgreementInfo.status || 'SIN CONVENIO'}
+                          </code>
+                          . Ningún estudiante puede formalizarse hasta obtener estado{' '}
+                          <code className="font-mono">APROBADO_JURIDICA</code> o{' '}
+                          <code className="font-mono">VIGENTE</code>.
+                        </p>
+                      </div>
+                      <Link
+                        href={`/convenios?companyId=${selectedStudentForFormalization.activePractice?.companyId || ''}`}
+                        className="shrink-0 px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300"
+                      >
+                        Ir a Convenios
+                      </Link>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label htmlFor="formalize-teacher" className="text-xs font-bold text-slate-700">

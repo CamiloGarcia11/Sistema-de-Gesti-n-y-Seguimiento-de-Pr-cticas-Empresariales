@@ -33,7 +33,11 @@ enum Role {
 }
 
 enum AgreementStatus {
+  BORRADOR
   EN_TRAMITE
+  PENDIENTE_JURIDICA_UFPS
+  OBSERVADO_JURIDICA
+  APROBADO_JURIDICA
   VIGENTE
   VENCIDO
   CANCELADO
@@ -190,26 +194,62 @@ model Company {
 }
 
 model Agreement {
-  id               String          @id @default(uuid())
-  companyId        String          @map("company_id")
-  agreementNumber  String          @unique @map("agreement_number")
-  status           AgreementStatus @default(EN_TRAMITE)
-  startDate        DateTime        @map("start_date")
-  endDate          DateTime        @map("end_date")
-  documentUrl      String?         @map("document_url")
-  signedByDirector Boolean         @default(false) @map("signed_by_director")
-  notes            String?
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  deletedAt        DateTime?       @map("deleted_at")
+  id                     String          @id @default(uuid())
+  companyId              String          @map("company_id")
+  agreementNumber        String          @unique @map("agreement_number")
+  status                 AgreementStatus @default(BORRADOR)
+  startDate              DateTime        @map("start_date")
+  endDate                DateTime        @map("end_date")
+  documentUrl            String?         @map("document_url")
+  signedByDirector       Boolean         @default(false) @map("signed_by_director")
+  notes                  String?
+  juridicaRadicadoNumber String?         @map("juridica_radicado_number")
+  juridicaApprovalDate   DateTime?       @map("juridica_approval_date")
+  juridicaConceptUrl     String?         @map("juridica_concept_url")
+  juridicaObservations   String?         @map("juridica_observations")
+  juridicaReviewedAt     DateTime?       @map("juridica_reviewed_at")
+  juridicaReviewedById   String?         @map("juridica_reviewed_by_id")
+  sentToJuridicaAt       DateTime?       @map("sent_to_juridica_at")
+  sentToJuridicaById     String?         @map("sent_to_juridica_by_id")
+  juridicaHistory        Json?           @map("juridica_history")
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  deletedAt              DateTime?       @map("deleted_at")
 
   // Relaciones
-  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  company       Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  prerequisites AgreementPrerequisite[]
 
   @@index([companyId])
   @@index([status])
   @@index([agreementNumber])
   @@map("agreements")
+}
+
+model AgreementPrerequisite {
+  id                 String    @id @default(uuid())
+  agreementId        String    @map("agreement_id")
+  documentType       String    @map("document_type")
+  fileUrl            String    @map("file_url")
+  fileName           String?   @map("file_name")
+  mimeType           String?   @map("mime_type")
+  issuedAt           DateTime? @map("issued_at")
+  verificationStatus String    @default("PENDIENTE") @map("verification_status")
+  observations       String?
+  uploadedById       String?   @map("uploaded_by_id")
+  reviewedById       String?   @map("reviewed_by_id")
+  reviewedAt         DateTime? @map("reviewed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  @@unique([agreementId, documentType])
+  @@index([agreementId])
+  @@index([documentType])
+  @@index([verificationStatus])
+  @@map("agreement_prerequisites")
 }
 
 model Vacancy {
